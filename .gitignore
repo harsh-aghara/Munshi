@@ -19,3 +19,10 @@ npm-debug.log*
 # misc
 .DS_Store
 *.tsbuildinfo
+
+# agent & ide skills
+.agents/
+.claude/
+.windsurf/
+skills-lock.json
+*Product Requirements Document*
