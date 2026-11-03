@@ -13,11 +13,42 @@
 
 *Boliye, dikhaiye, likhiye — Speak it, show it, write it.*
 
-[Key Features](#-key-features) • [Architecture](#-architecture--data-flow) • [Supported Categories & Types](#-supported-writing-types) • [Quickstart](#-getting-started) • [API Reference](#-api-reference) • [Deployment](#-deployment)
+[Demo & Video](#-demo--screenshots) • [Key Features](#-key-features) • [Architecture](#-architecture--data-flow) • [Supported Categories & Types](#-supported-writing-types) • [Quickstart](#-getting-started) • [API Reference](#-api-reference) • [Deployment](#-deployment)
 
 ---
 
 </div>
+
+## 🎬 Demo & Screenshots
+
+### 📹 Full YouTube Walkthrough
+Click the video below to watch **Munshi** transcribe Hindi speech, parse proof documents, and draft a formal complaint in English in real time:
+
+[![Munshi Demo Video](https://img.youtube.com/vi/PKKM2zqMgCw/maxresdefault.jpg)](https://youtu.be/PKKM2zqMgCw)
+
+> 📺 **Direct YouTube Link**: [https://youtu.be/PKKM2zqMgCw](https://youtu.be/PKKM2zqMgCw)
+
+---
+
+### 📸 Application Walkthrough
+
+<div align="center">
+
+#### 1. Live Multilingual Voice Dictation & Supporting Document Extraction
+*Real-time audio waveform level visualizer, recording timer, and instant entity extraction from uploaded speed test screenshots & official receipts.*
+
+![Live Voice Dictation & Fact Extraction](public/assets/munshi-live-dictation.jpg)
+
+<br/>
+
+#### 2. Cross-Lingual Legal Drafting with In-Place Rich Text Editing
+*Spontaneous Hindi dictation translated and structured into a formal English complaint letter with in-place click-to-edit fields, layout controls, and export options.*
+
+![Bilingual Drafting and In-Place Editing](public/assets/munshi-draft-letter.jpg)
+
+</div>
+
+---
 
 ## 📌 Overview
 
@@ -54,10 +85,11 @@ Built atop the **Sarvam AI** foundation model ecosystem, Munshi is designed from
 - **Prose Layout**: Formatted title, section headings, and academic or narrative prose.
 - **Verse Layout**: Indented stanzas with rhythm preservation for poetry (Free verse, Haiku, Sonnet, Ghazal).
 
-### 💬 5. Natural Voice & Text Conversational Editing
-- Command bar accepts spoken or typed commands (e.g., *"Make paragraph 2 more assertive"*, *"Translate into Telugu"*, *"Change tone to polite"*, *"Read aloud"*).
-- Visual **Diff Viewer** highlights line and word-level modifications before applying.
-- Full multi-level **Undo / Redo** history store.
+### 💬 5. Natural Voice, Text & In-Place Editing
+- **Direct In-Place Editing**: Click any paragraph, salutation, or subject block directly in the right-hand preview panel to edit immediately like a native text editor, with full multilingual script and keyboard support.
+- **Conversational Commands**: Command bar accepts spoken or typed commands (e.g., *"Make paragraph 2 more assertive"*, *"Translate into Telugu"*, *"Change tone to polite"*, *"Read aloud"*).
+- **Visual Diff Viewer**: Highlights line and word-level modifications before applying.
+- **State History**: Full multi-level **Undo / Redo** history store.
 
 ### 🔍 6. Verified Recipient Discovery & SSRF Defense
 - Natural query resolution for authority contacts (e.g., *"Find the nodal grievance officer for Bescom Bangalore"*).
@@ -229,7 +261,7 @@ cp .env.example .env.local
 | Variable | Required | Description | Example |
 |---|:---:|---|---|
 | `SARVAM_API_KEY` | **Yes** | Your API key for Sarvam AI services | `sk_live_...` |
-| `ACCESS_CODE` | **Yes** | Passphrase gate for the client and API calls | `secret_code_123` |
+| `ACCESS_CODE` | No | Optional passphrase gate for private deployments (open access by default) | `secret_code_123` |
 | `SEARCH_PROVIDER` | No | Search provider (`tavily`, `serper`, or `brave`) | `tavily` |
 | `SEARCH_API_KEY` | No | API key for the chosen search provider | `tvly-...` |
 | `UPSTASH_REDIS_REST_URL`| No | Upstash Redis endpoint for production rate limiting | `https://...upstash.io` |
@@ -248,7 +280,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser. Enter your configured `ACCESS_CODE` when prompted to authenticate your session.
+Open [http://localhost:3000](http://localhost:3000) in your browser to start using Munshi immediately!
 
 ---
 
@@ -275,14 +307,14 @@ npm run build
 - ✅ **Contact Extraction**: Validates regex extraction and strict refusal of LLM-hallucinated contacts.
 - ✅ **SSRF Protection**: Proves private IP addresses, loopback, and cloud metadata ranges are blocked.
 - ✅ **Zod Contracts**: Validates every payload schema between frontend and server routes.
-- ✅ **Access Code Gate**: Rejects unauthenticated requests with `403 ACCESS_DENIED` and preserves request tracing IDs.
+- ✅ **Open Public Access & Auth Gate**: Tests open access behavior and optional `x-access-code` header validation.
 - ✅ **Zustand State Hydration**: Proves undo/redo history stacks and user preference isolation.
 
 ---
 
 ## 🔌 API Reference
 
-All requests to `/api/*` (except `/api/health`) require the `x-access-code` header.
+API endpoints support open public access, or optional access code verification when `ACCESS_CODE` is configured in production.
 
 | Method | Endpoint | Description |
 |---|---|---|
