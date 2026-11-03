@@ -9,9 +9,13 @@
 .env
 .env.local
 .env.*.local
+.env.production
+.env.development
+*.env
 
 # local test inputs (personal recordings and documents)
 /local-inputs/
+/messages/
 
 # debug
 npm-debug.log*
