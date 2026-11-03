@@ -21,6 +21,7 @@
     "url": "https://github.com/harsh-aghara/Munshi/issues"
   },
   "homepage": "https://github.com/harsh-aghara/Munshi#readme",
+  "license": "MIT",
   "dependencies": {
     "@tailwindcss/postcss": "^4.3.4",
     "@types/node": "^26.6.6",
