@@ -1,15 +1,8 @@
 'use client';
 
 import React from 'react';
-import { useMunshiStore } from '@/store/useMunshiStore';
 import type { DraftBlock } from '@/contracts';
-import {
-  AlertTriangle,
-  Lock,
-  Volume2,
-  FileText,
-  MessageSquare,
-} from 'lucide-react';
+import { EditableBlock } from './EditableBlock';
 
 interface LetterLayoutProps {
   blocks: DraftBlock[];
@@ -20,8 +13,6 @@ export const LetterLayout: React.FC<LetterLayoutProps> = ({
   blocks,
   groundingPolicy,
 }) => {
-  const { focusedEvidenceId, setFocusedEvidenceId, currentTTSBlockId } = useMunshiStore();
-
   const getBlock = (role: string) => blocks.find((b) => b.role === role);
   const getBlocks = (role: string) => blocks.filter((b) => b.role === role);
 
@@ -35,68 +26,28 @@ export const LetterLayout: React.FC<LetterLayoutProps> = ({
   const enclosures = getBlock('enclosures');
   const disclaimer = getBlock('disclaimer');
 
-  const renderBlockWithGrounding = (block: DraftBlock, className = '') => {
-    const isPlaying = currentTTSBlockId === block.id;
-    const isUnverified = block.grounding === 'unverified';
-
-    return (
-      <div
-        key={block.id}
-        className={`group relative rounded-lg p-1.5 transition-all ${
-          isPlaying
-            ? 'bg-amber-100/70 ring-2 ring-amber-400'
-            : 'hover:bg-slate-50/70'
-        } ${className}`}
-      >
-        <p className="whitespace-pre-line leading-relaxed text-slate-900">{block.text}</p>
-
-        {/* Provenance & Grounding Chips (PRD FE-13) */}
-        {groundingPolicy !== 'creative' && (
-          <div className="mt-1 flex flex-wrap items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-            {block.evidenceIds.map((evId) => (
-              <button
-                key={evId}
-                type="button"
-                onClick={() =>
-                  setFocusedEvidenceId(focusedEvidenceId === evId ? null : evId)
-                }
-                className="flex items-center gap-0.5 rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-medium text-slate-600 hover:bg-slate-200"
-              >
-                <FileText className="h-2.5 w-2.5" />
-                <span>Citation</span>
-              </button>
-            ))}
-
-            {isUnverified && (
-              <span className="flex items-center gap-0.5 rounded bg-rose-50 px-1.5 py-0.5 text-[9px] font-semibold text-rose-700 border border-rose-200">
-                <AlertTriangle className="h-2.5 w-2.5 text-rose-600" />
-                Unverified
-              </span>
-            )}
-
-            {block.locked && (
-              <span className="flex items-center gap-0.5 text-[9px] text-slate-400">
-                <Lock className="h-2.5 w-2.5" /> Locked
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  };
-
   return (
     <div className="layout-letter mx-auto max-w-3xl space-y-6 text-sm text-slate-900 leading-relaxed font-normal">
       {/* Sender and Date row */}
       <div className="flex flex-col sm:flex-row justify-between items-start gap-4 border-b border-slate-100 pb-4">
         {sender && (
-          <div className="font-medium text-slate-700 max-w-xs">
-            {renderBlockWithGrounding(sender)}
+          <div className="font-medium text-slate-700 max-w-xs flex-1">
+            <EditableBlock
+              block={sender}
+              groundingPolicy={groundingPolicy}
+              textareaClassName="font-medium text-slate-700"
+              placeholder="Sender details / Name..."
+            />
           </div>
         )}
         {date && (
-          <div className="sm:text-right font-medium text-slate-600 ml-auto">
-            {renderBlockWithGrounding(date)}
+          <div className="sm:text-right font-medium text-slate-600 ml-auto max-w-xs">
+            <EditableBlock
+              block={date}
+              groundingPolicy={groundingPolicy}
+              textareaClassName="sm:text-right font-medium text-slate-600"
+              placeholder="Date..."
+            />
           </div>
         )}
       </div>
@@ -104,58 +55,93 @@ export const LetterLayout: React.FC<LetterLayoutProps> = ({
       {/* Recipient */}
       {recipient && (
         <div className="max-w-md font-medium text-slate-800">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-0.5 px-1.5">
             To:
           </div>
-          {renderBlockWithGrounding(recipient)}
+          <EditableBlock
+            block={recipient}
+            groundingPolicy={groundingPolicy}
+            textareaClassName="font-medium text-slate-800"
+            placeholder="Recipient details..."
+          />
         </div>
       )}
 
       {/* Subject Line */}
       {subject && (
-        <div className="rounded-lg bg-slate-50 p-2 border-l-4 border-munshi-600 font-bold text-slate-900">
-          <span className="text-slate-500 font-semibold mr-1">Subject:</span>
-          {subject.text}
+        <div className="rounded-xl bg-slate-50/90 p-1 border-l-4 border-munshi-600 shadow-soft-sm">
+          <EditableBlock
+            block={subject}
+            groundingPolicy={groundingPolicy}
+            prefix={<span className="text-slate-500 font-semibold mr-1">Subject:</span>}
+            textareaClassName="font-bold text-slate-900"
+            placeholder="Subject line..."
+          />
         </div>
       )}
 
       {/* Salutation */}
       {salutation && (
         <div className="font-semibold text-slate-900 pt-1">
-          {renderBlockWithGrounding(salutation)}
+          <EditableBlock
+            block={salutation}
+            groundingPolicy={groundingPolicy}
+            textareaClassName="font-semibold text-slate-900"
+            placeholder="Salutation (e.g., Respected Sir/Madam,)..."
+          />
         </div>
       )}
 
       {/* Body Blocks */}
       <div className="space-y-4">
-        {bodyBlocks.map((block) => renderBlockWithGrounding(block))}
+        {bodyBlocks.map((block) => (
+          <EditableBlock
+            key={block.id}
+            block={block}
+            groundingPolicy={groundingPolicy}
+            textareaClassName="leading-relaxed text-slate-900 text-justify sm:text-left"
+            placeholder="Type body paragraph here..."
+          />
+        ))}
       </div>
 
       {/* Closing */}
       {closing && (
         <div className="pt-4 max-w-xs font-medium text-slate-800">
-          {renderBlockWithGrounding(closing)}
+          <EditableBlock
+            block={closing}
+            groundingPolicy={groundingPolicy}
+            textareaClassName="font-medium text-slate-800"
+            placeholder="Closing (e.g., Yours faithfully,)..."
+          />
         </div>
       )}
 
       {/* Enclosures */}
       {enclosures && (
         <div className="pt-4 text-xs text-slate-600 border-t border-slate-100">
-          <span className="font-semibold uppercase tracking-wider text-slate-400">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-0.5 px-1.5">
             Enclosures:
-          </span>
-          {renderBlockWithGrounding(enclosures)}
+          </div>
+          <EditableBlock
+            block={enclosures}
+            groundingPolicy={groundingPolicy}
+            textareaClassName="text-xs text-slate-600"
+            placeholder="Enclosures..."
+          />
         </div>
       )}
 
-      {/* Disclaimer block (PRD BE-13, NFR-6: Legal-style types, locked, cannot be removed) */}
+      {/* Disclaimer block (locked official notice) */}
       {disclaimer && (
-        <div className="mt-8 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500 italic">
-          <div className="flex items-center gap-1.5 font-semibold not-italic text-slate-600 mb-0.5">
-            <Lock className="h-3 w-3 text-slate-400" />
-            <span>Official Notice</span>
-          </div>
-          <p>{disclaimer.text}</p>
+        <div className="mt-8 rounded-xl border border-slate-200 bg-slate-50/80 p-3 text-xs text-slate-500 italic">
+          <div className="text-slate-600 font-semibold mb-1">Official Notice</div>
+          <EditableBlock
+            block={disclaimer}
+            groundingPolicy={groundingPolicy}
+            readOnly={true}
+            textareaClassName="italic text-slate-500 text-xs"
+          />
         </div>
       )}
     </div>

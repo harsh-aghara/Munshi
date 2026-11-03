@@ -164,3 +164,40 @@ test('Zustand store: initial state defaults safely for SSR hydration and marks i
   assert.equal(useMunshiStore.getState().isHydrated, true);
 });
 
+test('Zustand store: in-place block editing updates draft and commits to undo history', () => {
+  const store = useMunshiStore.getState();
+  store.resetNewCase();
+
+  const initialDraft: Draft = {
+    caseId: 'case_edit_test',
+    version: 1,
+    lang: 'gu-IN',
+    docType: 'grievance',
+    layout: 'letter',
+    tone: { id: 'formal' },
+    blocks: [
+      { id: 'blk_subj', role: 'subject', text: 'પ્રારંભિક વિષય', evidenceIds: [], grounding: 'verified' },
+      { id: 'blk_body', role: 'body', text: 'પ્રારંભિક લખાણ', evidenceIds: [], grounding: 'verified' },
+    ],
+  };
+
+  store.setDraft(initialDraft, true);
+  assert.equal(useMunshiStore.getState().draft?.blocks[0].text, 'પ્રારંભિક વિષય');
+
+  // Direct in-place editing while typing
+  store.updateDraftBlock('blk_subj', 'સુધારેલ વિષય');
+  assert.equal(useMunshiStore.getState().draft?.blocks[0].text, 'સુધારેલ વિષય');
+
+  // Committing edit (on blur) pushes a new version to history
+  store.commitDraftBlockEdit('blk_subj', 'સુધારેલ વિષય');
+  assert.equal(useMunshiStore.getState().draft?.version, 2);
+
+  // Undo reverts in-place edit
+  store.undoDraft();
+  assert.equal(useMunshiStore.getState().draft?.blocks[0].text, 'પ્રારંભિક વિષય');
+
+  // Redo re-applies in-place edit
+  store.redoDraft();
+  assert.equal(useMunshiStore.getState().draft?.blocks[0].text, 'સુધારેલ વિષય');
+});
+

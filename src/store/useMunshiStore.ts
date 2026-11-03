@@ -68,6 +68,8 @@ export interface MunshiStoreState {
   setShowNewCaseModal: (show: boolean) => void;
   setShowLangChangeDialog: (dialog: { targetLang: Lang } | null) => void;
   setShowCustomTypeModal: (show: boolean) => void;
+  updateDraftBlock: (blockId: string, newText: string) => void;
+  commitDraftBlockEdit: (blockId: string, newText: string) => void;
   resetNewCase: () => void;
   rehydrate: () => void;
 }
@@ -255,6 +257,65 @@ export const useMunshiStore = create<MunshiStoreState>((set, get) => {
           draftHistoryIndex: newIndex,
         });
       }
+    },
+
+    updateDraftBlock: (blockId: string, newText: string) => {
+      set((state) => {
+        if (!state.draft) return state;
+
+        const updatedBlocks = state.draft.blocks.map((b) =>
+          b.id === blockId ? { ...b, text: newText } : b
+        );
+
+        const updatedDraft = {
+          ...state.draft,
+          blocks: updatedBlocks,
+        };
+
+        if (typeof window !== 'undefined') {
+          try {
+            sessionStorage.setItem(
+              SESSION_STORAGE_KEY,
+              JSON.stringify({
+                caseState: state.caseState,
+                draft: updatedDraft,
+                contacts: state.contacts,
+              })
+            );
+          } catch (e) {
+            console.error(e);
+          }
+        }
+
+        return {
+          draft: updatedDraft,
+        };
+      });
+    },
+
+    commitDraftBlockEdit: (blockId: string, newText: string) => {
+      const state = get();
+      if (!state.draft) return;
+
+      const lastHistoryDraft = state.draftHistory[state.draftHistoryIndex];
+      const lastHistoryBlock = lastHistoryDraft?.blocks.find((b) => b.id === blockId);
+
+      if (lastHistoryBlock && lastHistoryBlock.text === newText) {
+        // No difference from last history version
+        return;
+      }
+
+      const updatedBlocks = state.draft.blocks.map((b) =>
+        b.id === blockId ? { ...b, text: newText } : b
+      );
+
+      const nextVersionDraft: Draft = {
+        ...state.draft,
+        version: (state.draft.version || 1) + 1,
+        blocks: updatedBlocks,
+      };
+
+      state.setDraft(nextVersionDraft, true);
     },
 
     setFocusedEvidenceId: (id: string | null) => set({ focusedEvidenceId: id }),

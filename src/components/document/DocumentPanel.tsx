@@ -30,6 +30,7 @@ import {
   GitCompare,
   Sparkles,
   ChevronDown,
+  Edit3,
 } from 'lucide-react';
 
 export const DocumentPanel: React.FC = () => {
@@ -281,6 +282,15 @@ export const DocumentPanel: React.FC = () => {
                   <span>{showDiff ? 'Hide Diff' : 'Show Diff'}</span>
                 </button>
               )}
+
+              {/* In-place editor hint badge */}
+              <div
+                className="hidden lg:flex items-center gap-1 text-[11px] font-medium text-slate-500 bg-slate-100/90 px-2.5 py-1 rounded-xl border border-slate-200/80 shadow-xs"
+                title="Click any text block in the document to edit in place"
+              >
+                <Edit3 className="h-3 w-3 text-munshi-600" />
+                <span>Editable in place</span>
+              </div>
             </>
           )}
         </div>
