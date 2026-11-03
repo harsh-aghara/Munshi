@@ -2,6 +2,14 @@ export interface AudioRecorderOptions {
   maxDurationMs?: number;
   onLevelChange?: (level: number) => void; // 0 to 1
   onTimeout?: () => void;
+  onProgress?: (seconds: number) => void;
+}
+
+export function formatTime(secs: number): string {
+  const safeSecs = Math.max(0, Math.floor(secs));
+  const m = Math.floor(safeSecs / 60);
+  const s = safeSecs % 60;
+  return `${m}:${s < 10 ? '0' : ''}${s}`;
 }
 
 export class VoiceRecorder {
@@ -13,6 +21,8 @@ export class VoiceRecorder {
   private chunks: Blob[] = [];
   private mimeType: string = '';
   private timeoutId: NodeJS.Timeout | null = null;
+  private progressIntervalId: NodeJS.Timeout | null = null;
+  private startTime: number = 0;
 
   public static getSupportedMimeType(): string {
     if (typeof window === 'undefined' || !window.MediaRecorder) {
@@ -38,7 +48,7 @@ export class VoiceRecorder {
   }
 
   public async start(options: AudioRecorderOptions = {}): Promise<void> {
-    const { maxDurationMs = 300000, onLevelChange, onTimeout } = options;
+    const { maxDurationMs, onLevelChange, onTimeout, onProgress } = options;
 
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({
@@ -62,6 +72,16 @@ export class VoiceRecorder {
     const recorderOptions = this.mimeType ? { mimeType: this.mimeType } : undefined;
     this.mediaRecorder = new MediaRecorder(this.stream, recorderOptions);
     this.chunks = [];
+    this.startTime = Date.now();
+
+    if (onProgress) {
+      this.progressIntervalId = setInterval(() => {
+        if (this.startTime > 0) {
+          const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+          onProgress(elapsed);
+        }
+      }, 1000);
+    }
 
     this.mediaRecorder.ondataavailable = (e) => {
       if (e.data && e.data.size > 0) {
@@ -100,7 +120,7 @@ export class VoiceRecorder {
 
     this.mediaRecorder.start(250); // Slice data every 250ms
 
-    if (maxDurationMs > 0) {
+    if (maxDurationMs && maxDurationMs > 0) {
       this.timeoutId = setTimeout(() => {
         if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
           if (onTimeout) onTimeout();
@@ -110,11 +130,22 @@ export class VoiceRecorder {
     }
   }
 
+  public getElapsedSeconds(): number {
+    if (!this.startTime) return 0;
+    return Math.floor((Date.now() - this.startTime) / 1000);
+  }
+
   public async stop(): Promise<Blob> {
     if (this.timeoutId) {
       clearTimeout(this.timeoutId);
       this.timeoutId = null;
     }
+
+    if (this.progressIntervalId) {
+      clearInterval(this.progressIntervalId);
+      this.progressIntervalId = null;
+    }
+    this.startTime = 0;
 
     if (this.animFrameId) {
       cancelAnimationFrame(this.animFrameId);
@@ -157,6 +188,11 @@ export class VoiceRecorder {
       clearTimeout(this.timeoutId);
       this.timeoutId = null;
     }
+    if (this.progressIntervalId) {
+      clearInterval(this.progressIntervalId);
+      this.progressIntervalId = null;
+    }
+    this.startTime = 0;
     if (this.animFrameId) {
       cancelAnimationFrame(this.animFrameId);
       this.animFrameId = null;

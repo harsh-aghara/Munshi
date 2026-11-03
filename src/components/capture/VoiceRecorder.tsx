@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useMunshiStore } from '@/store/useMunshiStore';
-import { VoiceRecorder } from '@/lib/audio';
+import { VoiceRecorder, formatTime } from '@/lib/audio';
 import { MunshiApiClient } from '@/lib/api-client';
 import { t } from '@/lib/i18n';
 import { Mic, Square, Loader2, Volume2, AlertCircle } from 'lucide-react';
@@ -50,12 +50,8 @@ export const VoiceRecorderWidget: React.FC<VoiceRecorderProps> = ({
       }, 1000);
 
       await recorder.start({
-        maxDurationMs: 180000, // 3 min max
         onLevelChange: (level) => {
           setAudioLevel(level);
-        },
-        onTimeout: () => {
-          stopRecording();
         },
       });
     } catch (err: any) {
@@ -78,8 +74,8 @@ export const VoiceRecorderWidget: React.FC<VoiceRecorderProps> = ({
     try {
       const blob = await recorderRef.current.stop();
 
-      // If recording was an accidental micro-click (< 500 bytes or 0 seconds), ignore cleanly
-      if (blob.size < 500 || recordSeconds === 0) {
+      // If recording was an accidental micro-click (< 500 bytes), ignore cleanly
+      if (blob.size < 500) {
         return;
       }
 
@@ -96,12 +92,6 @@ export const VoiceRecorderWidget: React.FC<VoiceRecorderProps> = ({
     } finally {
       setLoading(false);
     }
-  };
-
-  const formatTime = (secs: number) => {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
   const currentDictationLangLabel =
@@ -134,7 +124,8 @@ export const VoiceRecorderWidget: React.FC<VoiceRecorderProps> = ({
           </div>
 
           {isRecording && (
-            <span className="font-mono text-xs font-semibold text-slate-700">
+            <span className="flex items-center gap-1.5 font-mono text-xs font-bold text-red-600 bg-red-50 border border-red-200 px-2.5 py-0.5 rounded-full animate-pulse shadow-xs">
+              <span className="h-1.5 w-1.5 rounded-full bg-red-600 animate-ping" />
               {formatTime(recordSeconds)}
             </span>
           )}

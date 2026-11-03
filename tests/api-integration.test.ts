@@ -16,6 +16,7 @@ import { POST as commandPost } from '../src/app/api/command/route.ts';
 import { POST as translatePost } from '../src/app/api/translate/route.ts';
 import { POST as recipientPost } from '../src/app/api/recipient/route.ts';
 import { GET as visionStatusGet } from '../src/app/api/vision/status/route.ts';
+import { POST as sttPost } from '../src/app/api/stt/route.ts';
 import { checkRateLimit, checkDailyLimit } from '../src/server/rate-limit.ts';
 
 function createRequest(
@@ -151,4 +152,39 @@ test('Daily resource limits enforce caps on vision, stt, and lookups', async () 
   // 21st must fail
   const blocked = await checkDailyLimit(testIp, 'lookups', 1);
   assert.equal(blocked, false);
+});
+
+// ── 5. Speech-to-Text Route ──────────────────────────────────────────────────
+
+test('POST /api/stt returns empty segments on micro-click recordings without error', async () => {
+  const formData = new FormData();
+  formData.append('audio', new Blob(['short'], { type: 'audio/webm' }), 'audio.webm');
+  formData.append('lang', 'auto');
+
+  const req = new Request('http://localhost:3000/api/stt', {
+    method: 'POST',
+    headers: { 'x-access-code': 'test-secret-code' },
+    body: formData,
+  });
+
+  const res = await sttPost(req);
+  assert.equal(res.status, 200);
+  const data = await res.json();
+  assert.deepEqual(data, { segments: [] });
+});
+
+test('POST /api/stt rejects missing audio field with 400 VALIDATION_FAILED', async () => {
+  const formData = new FormData();
+  formData.append('lang', 'hi-IN');
+
+  const req = new Request('http://localhost:3000/api/stt', {
+    method: 'POST',
+    headers: { 'x-access-code': 'test-secret-code' },
+    body: formData,
+  });
+
+  const res = await sttPost(req);
+  assert.equal(res.status, 400);
+  const data = await res.json();
+  assert.equal(data.code, 'VALIDATION_FAILED');
 });

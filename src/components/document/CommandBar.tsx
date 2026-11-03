@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useMunshiStore } from '@/store/useMunshiStore';
 import { MunshiApiClient } from '@/lib/api-client';
-import { VoiceRecorder, globalAudioPlayer } from '@/lib/audio';
+import { VoiceRecorder, globalAudioPlayer, formatTime } from '@/lib/audio';
 import { exportToPdf } from '@/lib/pdf';
 import { getDocTypeById } from '@/config/doctypes';
 import { t } from '@/lib/i18n';
@@ -36,18 +36,36 @@ export const CommandBar: React.FC = () => {
 
   const [commandText, setCommandText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
+  const [recordSeconds, setRecordSeconds] = useState(0);
   const [commandFeedback, setCommandFeedback] = useState<string | null>(null);
 
   const recorderRef = React.useRef<VoiceRecorder | null>(null);
+  const timerRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  React.useEffect(() => {
+    return () => {
+      if (recorderRef.current) {
+        recorderRef.current.cancel();
+      }
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, []);
 
   const handleStartVoice = async () => {
     try {
       setCommandFeedback(null);
       const recorder = new VoiceRecorder();
       recorderRef.current = recorder;
+      setRecordSeconds(0);
       setIsRecording(true);
+      timerRef.current = setInterval(() => {
+        setRecordSeconds((s) => s + 1);
+      }, 1000);
       await recorder.start();
     } catch (err: any) {
+      if (timerRef.current) clearInterval(timerRef.current);
       setError(err);
       setIsRecording(false);
     }
@@ -55,6 +73,10 @@ export const CommandBar: React.FC = () => {
 
   const handleStopVoice = async () => {
     if (!recorderRef.current || !isRecording) return;
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
     try {
       setIsRecording(false);
       setLoading(true, t('capture.processing_audio', prefs.uiLang));
@@ -278,10 +300,12 @@ export const CommandBar: React.FC = () => {
             value={commandText}
             onChange={(e) => setCommandText(e.target.value)}
             placeholder={t('document.command_placeholder', prefs.uiLang)}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-10 text-xs text-slate-900 placeholder:text-slate-400 focus:border-munshi-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-munshi-500"
+            className={`w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 text-xs text-slate-900 placeholder:text-slate-400 focus:border-munshi-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-munshi-500 transition-all ${
+              isRecording ? 'pr-24' : 'pr-10'
+            }`}
           />
 
-          <div className="absolute right-1.5 top-1">
+          <div className="absolute right-1.5 top-1 flex items-center gap-1.5">
             {!isRecording ? (
               <button
                 type="button"
@@ -292,14 +316,20 @@ export const CommandBar: React.FC = () => {
                 <Mic className="h-4 w-4" />
               </button>
             ) : (
-              <button
-                type="button"
-                onClick={handleStopVoice}
-                className="rounded-lg bg-red-600 p-1.5 text-white animate-pulse"
-                title="Stop recording"
-              >
-                <Square className="h-4 w-4" />
-              </button>
+              <>
+                <span className="flex items-center gap-1 rounded-md bg-red-50 border border-red-200 px-2 py-0.5 text-[11px] font-mono font-bold text-red-600 animate-pulse">
+                  <span className="h-1.5 w-1.5 rounded-full bg-red-600 animate-ping" />
+                  {formatTime(recordSeconds)}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleStopVoice}
+                  className="rounded-lg bg-red-600 p-1.5 text-white animate-pulse"
+                  title="Stop recording"
+                >
+                  <Square className="h-4 w-4" />
+                </button>
+              </>
             )}
           </div>
         </div>

@@ -73,7 +73,7 @@ class UpstashStore implements RateLimitStore {
 export const LIMITS = {
   requestsPerMinute: 30,
   visionPagesPerDay: 50,
-  sttMinutesPerDay: 30,
+  sttMinutesPerDay: Infinity,
   lookupsPerDay: 20,
 } as const;
 

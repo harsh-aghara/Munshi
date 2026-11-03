@@ -69,8 +69,17 @@ export class MunshiApiClient {
   ): Promise<{ segments: Segment[] }> {
     const cleanType = (audioBlob.type || 'audio/webm').split(';')[0].trim().toLowerCase() || 'audio/webm';
     const cleanBlob = new Blob([audioBlob], { type: cleanType });
+    const ext = cleanType.includes('wav')
+      ? 'wav'
+      : cleanType.includes('mp4') || cleanType.includes('m4a')
+      ? 'mp4'
+      : cleanType.includes('ogg') || cleanType.includes('opus')
+      ? 'ogg'
+      : cleanType.includes('mp3') || cleanType.includes('mpeg')
+      ? 'mp3'
+      : 'webm';
     const formData = new FormData();
-    formData.append('audio', cleanBlob, 'audio.webm');
+    formData.append('audio', cleanBlob, `audio.${ext}`);
     formData.append('lang', lang);
 
     const headers = this.getHeaders();

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useMunshiStore } from '@/store/useMunshiStore';
 import { MunshiApiClient } from '@/lib/api-client';
-import { VoiceRecorder, globalAudioPlayer } from '@/lib/audio';
+import { VoiceRecorder, globalAudioPlayer, formatTime } from '@/lib/audio';
 import { t } from '@/lib/i18n';
 import {
   HelpCircle,
@@ -21,13 +21,21 @@ export const FollowUpCard: React.FC = () => {
   const [activeAnswers, setActiveAnswers] = useState<Record<string, string>>({});
   const [isPlayingAudio, setIsPlayingAudio] = useState<string | null>(null);
   const [recordingKey, setRecordingKey] = useState<string | null>(null);
+  const [recordSeconds, setRecordSeconds] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const recorderRef = React.useRef<VoiceRecorder | null>(null);
+  const timerRef = React.useRef<NodeJS.Timeout | null>(null);
 
   React.useEffect(() => {
     return () => {
       globalAudioPlayer.stop();
+      if (recorderRef.current) {
+        recorderRef.current.cancel();
+      }
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
     };
   }, []);
 
@@ -68,8 +76,13 @@ export const FollowUpCard: React.FC = () => {
       const recorder = new VoiceRecorder();
       recorderRef.current = recorder;
       setRecordingKey(key);
-      await recorder.start({ maxDurationMs: 60000 });
+      setRecordSeconds(0);
+      timerRef.current = setInterval(() => {
+        setRecordSeconds((s) => s + 1);
+      }, 1000);
+      await recorder.start();
     } catch (err: any) {
+      if (timerRef.current) clearInterval(timerRef.current);
       setError(err);
       setRecordingKey(null);
     }
@@ -77,6 +90,11 @@ export const FollowUpCard: React.FC = () => {
 
   const handleStopVoiceAnswer = async (key: string) => {
     if (!recorderRef.current || recordingKey !== key) return;
+
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
 
     try {
       setRecordingKey(null);
@@ -199,14 +217,20 @@ export const FollowUpCard: React.FC = () => {
                     <Mic className="h-4 w-4" />
                   </button>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => handleStopVoiceAnswer(mf.key)}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-600 text-white animate-pulse"
-                    title="Stop recording"
-                  >
-                    <Square className="h-3.5 w-3.5" />
-                  </button>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="flex items-center gap-1 rounded-md bg-red-50 border border-red-200 px-2 py-1 text-[11px] font-mono font-bold text-red-600 animate-pulse">
+                      <span className="h-1.5 w-1.5 rounded-full bg-red-600 animate-ping" />
+                      {formatTime(recordSeconds)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleStopVoiceAnswer(mf.key)}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-600 text-white animate-pulse"
+                      title="Stop recording"
+                    >
+                      <Square className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

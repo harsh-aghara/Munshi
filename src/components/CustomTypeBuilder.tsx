@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useMunshiStore } from '@/store/useMunshiStore';
 import { MunshiApiClient } from '@/lib/api-client';
-import { VoiceRecorder } from '@/lib/audio';
+import { VoiceRecorder, formatTime } from '@/lib/audio';
 import { t } from '@/lib/i18n';
 import {
   Sparkles,
@@ -51,9 +51,22 @@ export const CustomTypeBuilder: React.FC = () => {
   const [proposedDef, setProposedDef] = useState<CustomDef | null>(caseState?.customDef || null);
   const [isProposing, setIsProposing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [recordSeconds, setRecordSeconds] = useState(0);
   const [newRole, setNewRole] = useState<BlockRole>('body');
 
   const recorderRef = React.useRef<VoiceRecorder | null>(null);
+  const timerRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  React.useEffect(() => {
+    return () => {
+      if (recorderRef.current) {
+        recorderRef.current.cancel();
+      }
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, []);
 
   if (!showCustomTypeModal) return null;
 
@@ -61,9 +74,14 @@ export const CustomTypeBuilder: React.FC = () => {
     try {
       const recorder = new VoiceRecorder();
       recorderRef.current = recorder;
+      setRecordSeconds(0);
       setIsRecording(true);
+      timerRef.current = setInterval(() => {
+        setRecordSeconds((s) => s + 1);
+      }, 1000);
       await recorder.start();
     } catch (err: any) {
+      if (timerRef.current) clearInterval(timerRef.current);
       setError(err);
       setIsRecording(false);
     }
@@ -71,6 +89,10 @@ export const CustomTypeBuilder: React.FC = () => {
 
   const handleStopVoice = async () => {
     if (!recorderRef.current || !isRecording) return;
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
     try {
       setIsRecording(false);
       setLoading(true, t('capture.processing_audio', prefs.uiLang));
@@ -222,7 +244,7 @@ export const CustomTypeBuilder: React.FC = () => {
               placeholder={t('custom.brief_placeholder', prefs.uiLang)}
               className="w-full rounded-2xl border border-slate-200 p-3 text-xs text-slate-900 placeholder:text-slate-400 focus:border-munshi-500 focus:outline-none focus:ring-2 focus:ring-munshi-500/20"
             />
-            <div className="absolute right-2 bottom-2">
+            <div className="absolute right-2 bottom-2 flex items-center gap-1.5">
               {!isRecording ? (
                 <button
                   type="button"
@@ -233,14 +255,20 @@ export const CustomTypeBuilder: React.FC = () => {
                   <Mic className="h-4 w-4" />
                 </button>
               ) : (
-                <button
-                  type="button"
-                  onClick={handleStopVoice}
-                  className="rounded-lg bg-red-600 p-1.5 text-white animate-pulse"
-                  title="Stop recording"
-                >
-                  <Square className="h-4 w-4" />
-                </button>
+                <>
+                  <span className="flex items-center gap-1 rounded-md bg-red-50 border border-red-200 px-2 py-0.5 text-[11px] font-mono font-bold text-red-600 animate-pulse">
+                    <span className="h-1.5 w-1.5 rounded-full bg-red-600 animate-ping" />
+                    {formatTime(recordSeconds)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleStopVoice}
+                    className="rounded-lg bg-red-600 p-1.5 text-white animate-pulse"
+                    title="Stop recording"
+                  >
+                    <Square className="h-4 w-4" />
+                  </button>
+                </>
               )}
             </div>
           </div>

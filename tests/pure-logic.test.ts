@@ -49,6 +49,10 @@ import {
   ApiErrorSchema,
 } from '../src/contracts/index.ts';
 
+import { formatTime } from '../src/lib/audio.ts';
+import { parseSarvamSttResult } from '../src/server/sarvam/stt.ts';
+import { LIMITS } from '../src/server/rate-limit.ts';
+
 // ── 1. Email Regex & OCR Normalization ───────────────────────────────────────
 
 test('normalizeOcrText removes spaces around @ and dots', () => {
@@ -374,4 +378,70 @@ test('Zod contracts validate core domain structures', () => {
     requestId: 'req_123',
   });
   assert.equal(validErr.success, true);
+});
+
+// ── 8. Voice Timer & STT Uncapped Duration ───────────────────────────────────
+
+test('Recording timer: formatTime correctly converts seconds to MM:SS', () => {
+  assert.equal(formatTime(0), '0:00');
+  assert.equal(formatTime(5), '0:05');
+  assert.equal(formatTime(9), '0:09');
+  assert.equal(formatTime(10), '0:10');
+  assert.equal(formatTime(59), '0:59');
+  assert.equal(formatTime(60), '1:00');
+  assert.equal(formatTime(65), '1:05');
+  assert.equal(formatTime(125), '2:05');
+  assert.equal(formatTime(600), '10:00');
+  assert.equal(formatTime(3665), '61:05');
+});
+
+test('STT limits: speech-to-text daily limits are removed and uncapped', () => {
+  assert.equal(LIMITS.sttMinutesPerDay, Infinity);
+});
+
+test('STT parsing: parseSarvamSttResult normalizes words and sentence boundaries', () => {
+  const result = parseSarvamSttResult(
+    {
+      transcript: 'First sentence. Second sentence with several words here!',
+      language_code: 'hi-IN',
+      timestamps: {
+        words: [
+          'First',
+          'sentence.',
+          'Second',
+          'sentence',
+          'with',
+          'several',
+          'words',
+          'here!',
+        ],
+        start_time_seconds: [0.0, 0.5, 1.2, 1.6, 2.0, 2.3, 2.6, 3.0],
+        end_time_seconds: [0.4, 1.0, 1.5, 1.9, 2.2, 2.5, 2.9, 3.4],
+      },
+    },
+    'hi-IN',
+  );
+
+  assert.equal(result.detectedLang, 'hi-IN');
+  assert.equal(result.segments.length, 2);
+  assert.equal(result.segments[0].text, 'First sentence.');
+  assert.equal(result.segments[0].startMs, 0);
+  assert.equal(result.segments[0].endMs, 1000);
+  assert.equal(result.segments[1].text, 'Second sentence with several words here!');
+  assert.equal(result.segments[1].startMs, 1200);
+  assert.equal(result.segments[1].endMs, 3400);
+});
+
+test('STT parsing: fallback to single segment if no timestamps', () => {
+  const result = parseSarvamSttResult(
+    {
+      transcript: 'Direct transcript without word timestamps',
+      language_code: 'en-IN',
+    },
+    'auto',
+  );
+
+  assert.equal(result.detectedLang, 'en-IN');
+  assert.equal(result.segments.length, 1);
+  assert.equal(result.segments[0].text, 'Direct transcript without word timestamps');
 });
