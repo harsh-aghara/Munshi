@@ -1,5 +1,5 @@
 /**
- * Ambient Node, Web API, and React declarations for TypeScript compilation.
+ * Ambient Node and Web API declarations for TypeScript compilation.
  */
 
 declare namespace NodeJS {
@@ -44,14 +44,4 @@ declare module 'node:dns/promises' {
     hostname: string,
     options: { all: boolean },
   ): Promise<LookupAddress[]>;
-}
-
-declare namespace React {
-  type ReactNode = any;
-}
-
-declare namespace JSX {
-  interface IntrinsicElements {
-    [elemName: string]: any;
-  }
 }
