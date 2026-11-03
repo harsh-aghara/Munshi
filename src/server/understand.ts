@@ -182,15 +182,25 @@ export async function processUnderstand(
 
   // Custom Def handling (BE-11)
   let customDef = llmResult.customDef;
-  if (finalDocType === 'custom' && customDef) {
-    // Derive sendable and hasRecipient from layout and keywords
-    const isEmailOrLetter =
-      customDef.layout === 'email' || customDef.layout === 'letter';
-    customDef = {
-      ...customDef,
-      sendable: isEmailOrLetter,
-      hasRecipient: isEmailOrLetter,
-    };
+  if (finalDocType === 'custom') {
+    if (!customDef) {
+      customDef = {
+        label: 'Custom Document',
+        layout: 'prose',
+        skeleton: ['title', 'body', 'closing'],
+        requiredFacts: [],
+        sendable: false,
+        hasRecipient: false,
+      };
+    } else {
+      const isEmailOrLetter =
+        customDef.layout === 'email' || customDef.layout === 'letter';
+      customDef = {
+        ...customDef,
+        sendable: customDef.sendable ?? isEmailOrLetter,
+        hasRecipient: customDef.hasRecipient ?? isEmailOrLetter,
+      };
+    }
   }
 
   return {

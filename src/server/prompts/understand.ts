@@ -105,6 +105,53 @@ export const UnderstandLlmOutputSchema = z.preprocess((val) => {
       obj.missingFacts = [];
     }
 
+    // Sanitize and normalize customDef if provided
+    if (obj.customDef && typeof obj.customDef === 'object') {
+      const cd = { ...(obj.customDef as Record<string, unknown>) };
+      const label = String(cd.label || cd.title || cd.name || cd.docType || 'Custom Document').trim();
+      const rawLayout = String(cd.layout || 'prose').toLowerCase();
+      const layout = ['letter', 'email', 'prose', 'verse'].includes(rawLayout)
+        ? rawLayout
+        : 'prose';
+
+      const validRoles = [
+        'sender', 'date', 'recipient', 'subject', 'salutation',
+        'title', 'heading', 'body', 'stanza', 'closing', 'enclosures', 'disclaimer',
+      ];
+      let skeleton = Array.isArray(cd.skeleton)
+        ? cd.skeleton.map(String).filter((r) => validRoles.includes(r))
+        : [];
+      if (skeleton.length === 0) {
+        skeleton = layout === 'letter'
+          ? ['sender', 'date', 'recipient', 'subject', 'salutation', 'body', 'closing']
+          : layout === 'email'
+          ? ['subject', 'salutation', 'body', 'closing']
+          : layout === 'verse'
+          ? ['title', 'stanza', 'closing']
+          : ['title', 'heading', 'body', 'closing'];
+      }
+
+      const requiredFacts = Array.isArray(cd.requiredFacts)
+        ? cd.requiredFacts.map((rf: any, idx: number) => {
+            const key = String(rf?.key || rf?.id || `fact_${idx + 1}`).trim();
+            const factLabel = String(rf?.label || rf?.name || key).trim();
+            const question = String(
+              rf?.question || rf?.prompt || `Please provide ${factLabel}`,
+            ).trim();
+            return { key, label: factLabel, question };
+          })
+        : [];
+
+      obj.customDef = {
+        label,
+        layout,
+        skeleton,
+        requiredFacts,
+        sendable: Boolean(cd.sendable ?? (layout === 'email' || layout === 'letter')),
+        hasRecipient: Boolean(cd.hasRecipient ?? (layout === 'email' || layout === 'letter')),
+      };
+    }
+
     return obj;
   }
   return val;
@@ -171,7 +218,19 @@ RULES & CONSTRAINTS:
 6. Type Classification (if docTypeId is 'auto'):
    - Pick the most appropriate ID from the catalog and assign a confidence (0.0 to 1.0).
 7. Custom Type Proposal (if docTypeId is 'custom'):
-   - Analyze user customBrief and propose a CustomDef with a suitable layout, a skeleton composed ONLY of allowed block roles, and minimal requiredFacts.
+   - Analyze user customBrief and propose a CustomDef with a suitable layout ('letter', 'email', 'prose', or 'verse'), a skeleton composed ONLY of allowed block roles, and minimal requiredFacts (each with key, label, and question).
+   - Expected customDef shape:
+     "customDef": {
+       "label": "Scholarship Appeal Letter",
+       "layout": "letter",
+       "skeleton": ["sender", "date", "recipient", "subject", "salutation", "body", "closing"],
+       "requiredFacts": [
+         { "key": "student_name", "label": "Student Name", "question": "What is your full name?" },
+         { "key": "roll_number", "label": "Roll Number", "question": "What is your roll number?" }
+       ],
+       "sendable": false,
+       "hasRecipient": true
+     }
 8. Output Format: Return ONLY a valid JSON object matching this schema:
 {
   "detectedDocTypeId": "consumer_complaint",

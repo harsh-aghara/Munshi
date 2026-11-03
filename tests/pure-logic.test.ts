@@ -57,6 +57,7 @@ import {
 import { formatTime } from '../src/lib/audio.ts';
 import { parseSarvamSttResult } from '../src/server/sarvam/stt.ts';
 import { LIMITS } from '../src/server/rate-limit.ts';
+import { UnderstandLlmOutputSchema } from '../src/server/prompts/understand.ts';
 
 // ── 1. Email Regex & OCR Normalization ───────────────────────────────────────
 
@@ -482,4 +483,34 @@ test('STT parsing: fallback to single segment if no timestamps', () => {
   assert.equal(result.detectedLang, 'en-IN');
   assert.equal(result.segments.length, 1);
   assert.equal(result.segments[0].text, 'Direct transcript without word timestamps');
+});
+
+// ── 9. Understand LLM Schema Normalization ───────────────────────────────────
+
+test('UnderstandLlmOutputSchema gracefully normalizes missing customDef fields', () => {
+  // Simulates the exact LLM output shape that previously failed:
+  // Missing customDef.label and missing question in requiredFacts
+  const rawLlmOutput = {
+    detectedDocTypeId: 'custom',
+    docTypeConfidence: 0.9,
+    customDef: {
+      layout: 'letter',
+      skeleton: ['sender', 'recipient', 'body'],
+      requiredFacts: [
+        { key: 'student_name', label: 'Student Name' },
+        { key: 'roll_number', label: 'Roll Number' },
+      ],
+    },
+    extractedFacts: [],
+    missingFacts: [],
+  };
+
+  const parsed = UnderstandLlmOutputSchema.safeParse(rawLlmOutput);
+  assert.equal(parsed.success, true);
+  if (parsed.success) {
+    assert.equal(parsed.data.customDef?.label, 'Custom Document');
+    assert.equal(parsed.data.customDef?.requiredFacts.length, 2);
+    assert.equal(parsed.data.customDef?.requiredFacts[0].question, 'Please provide Student Name');
+    assert.equal(parsed.data.customDef?.requiredFacts[1].question, 'Please provide Roll Number');
+  }
 });
