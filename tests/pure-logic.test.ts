@@ -9,12 +9,20 @@ import {
   normalizeOcrText,
   extractContactsFromText,
   verifyEvidenceSnippet,
+  cleanExtractedEmail,
+  isDummyEmail,
 } from '../src/server/extract.ts';
 
 import {
   detectScriptLanguage,
   checkScriptMismatch,
 } from '../src/server/sarvam/translate.ts';
+
+import {
+  normalizeRecipientQuery,
+  scoreContactRelevance,
+  isOfficialDomain,
+} from '../src/server/search/index.ts';
 
 import {
   verifyBlockGrounding,
@@ -513,4 +521,52 @@ test('UnderstandLlmOutputSchema gracefully normalizes missing customDef fields',
     assert.equal(parsed.data.customDef?.requiredFacts[0].question, 'Please provide Student Name');
     assert.equal(parsed.data.customDef?.requiredFacts[1].question, 'Please provide Roll Number');
   }
+});
+
+// ── 10. Universal Web Grounding & Recipient Resolution ────────────────────────
+
+test('cleanExtractedEmail & isDummyEmail: sanitizes and filters placeholder emails', () => {
+  assert.equal(cleanExtractedEmail('cmog@gujarat.gov.in.The'), 'cmog@gujarat.gov.in');
+  assert.equal(cleanExtractedEmail('cmog@gujarat.gov.in.'), 'cmog@gujarat.gov.in');
+  assert.equal(cleanExtractedEmail('support@sbi.co.in!'), 'support@sbi.co.in');
+
+  assert.equal(isDummyEmail('name@example.com'), true);
+  assert.equal(isDummyEmail('user@example.org'), true);
+  assert.equal(isDummyEmail('test@placeholder.com'), true);
+  assert.equal(isDummyEmail('cmog@gujarat.gov.in'), false);
+  assert.equal(isDummyEmail('grievance@rbi.org.in'), false);
+});
+
+test('normalizeRecipientQuery: normalizes colloquial state titles to official designations', () => {
+  const norm1 = normalizeRecipientQuery('pm of gujarat');
+  assert.equal(norm1.wasNormalized, true);
+  assert.equal(norm1.officialDesignation, 'Chief Minister of Gujarat');
+
+  const norm2 = normalizeRecipientQuery('prime minister of maharashtra');
+  assert.equal(norm2.wasNormalized, true);
+  assert.equal(norm2.officialDesignation, 'Chief Minister of Maharashtra');
+
+  const norm3 = normalizeRecipientQuery('pm of india');
+  assert.equal(norm3.wasNormalized, false);
+
+  const norm4 = normalizeRecipientQuery('write a letter to pm of gujarat regarding road issues');
+  assert.equal(norm4.wasNormalized, true);
+  assert.match(norm4.normalized, /Chief Minister of Gujarat CMO/);
+});
+
+test('scoreContactRelevance: prioritizes official government domains and matching entities', () => {
+  const scoreGuj = scoreContactRelevance('cmog@gujarat.gov.in', 'Chief Minister of Gujarat');
+  const scoreTn = scoreContactRelevance('cmo@tn.gov.in', 'Chief Minister of Gujarat');
+  const scoreGeneric = scoreContactRelevance('info@randomsite.com', 'Chief Minister of Gujarat');
+
+  assert.ok(scoreGuj > scoreTn, 'Matching state domain must score higher than non-matching state domain');
+  assert.ok(scoreTn > scoreGeneric, 'Official .gov.in must score higher than commercial domain');
+});
+
+test('isOfficialDomain: recognizes government and educational TLDs', () => {
+  assert.equal(isOfficialDomain('gujarat.gov.in'), true);
+  assert.equal(isOfficialDomain('delhi.nic.in'), true);
+  assert.equal(isOfficialDomain('iitb.ac.in'), true);
+  assert.equal(isOfficialDomain('randomblog.com'), false);
+  assert.equal(isOfficialDomain('hdfcbank.com', 'HDFC Bank'), true);
 });

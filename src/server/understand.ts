@@ -18,6 +18,9 @@ import {
 import { getDocType } from '@/config/doctypes';
 import { verifyEvidenceSnippet } from './extract';
 import { translateText } from './sarvam/translate';
+import { planWebSearch } from './search/planner';
+import { searchWebForGrounding } from './search';
+import { type Contact } from '@/contracts';
 
 export async function processUnderstand(
   request: UnderstandRequest,
@@ -40,7 +43,58 @@ export async function processUnderstand(
   // Combine full source text for verbatim verification
   const speechText = segments.map((s) => s.text).join(' ');
   const docsText = docs.map((d) => d.markdown).join('\n');
-  const allSourceText = `${speechText}\n${docsText}`;
+  const userInputText = [speechText, customBrief].filter(Boolean).join(' ').trim();
+
+  // 1. Dynamic Web Search Grounding (extract only relevant factual content from internet)
+  let webGroundingContext = '';
+  const webContacts: Contact[] = [];
+
+  if (userInputText && process.env.SEARCH_API_KEY) {
+    try {
+      const searchPlan = await planWebSearch(userInputText, { docTypeId });
+      if (searchPlan.needsSearch && searchPlan.queries.length > 0) {
+        const searchResults = await Promise.allSettled(
+          searchPlan.queries.slice(0, 2).map((q) =>
+            searchWebForGrounding(q, { targetEntity: searchPlan.targetEntity }),
+          ),
+        );
+
+        const answersList: string[] = [];
+        const snippetsList: string[] = [];
+
+        for (const res of searchResults) {
+          if (res.status === 'fulfilled') {
+            const data = res.value;
+            if (data.answer) answersList.push(data.answer);
+            for (const r of data.results) {
+              if (r.snippet) snippetsList.push(`[${r.title}]: ${r.snippet}`);
+            }
+            for (const c of data.contacts) {
+              if (!webContacts.some((existing) => existing.email === c.email)) {
+                webContacts.push(c);
+              }
+            }
+          }
+        }
+
+        if (answersList.length > 0 || snippetsList.length > 0) {
+          webGroundingContext = [
+            '=== VERIFIED INTERNET SEARCH CONTEXT (Real-world Grounding) ===',
+            searchPlan.targetEntity ? `Target Entity / Office: "${searchPlan.targetEntity}"` : '',
+            answersList.length > 0 ? `Synthesized Facts & Contacts:\n${answersList.join('\n\n')}` : '',
+            snippetsList.length > 0 ? `Relevant Web Sources:\n${snippetsList.slice(0, 4).join('\n\n')}` : '',
+            '=== END INTERNET SEARCH CONTEXT ===',
+          ]
+            .filter(Boolean)
+            .join('\n\n');
+        }
+      }
+    } catch (err) {
+      console.warn('Web grounding skipped due to error:', err);
+    }
+  }
+
+  const allSourceText = `${speechText}\n${docsText}\n${webGroundingContext}`;
 
   // Call LLM
   const systemPrompt = buildUnderstandSystemPrompt();
@@ -52,6 +106,7 @@ export async function processUnderstand(
     inputLang,
     answers,
     previousFacts: previousCase?.facts,
+    webGroundingContext: webGroundingContext || undefined,
   });
 
   const llmResult = await callSarvamLlm<UnderstandLlmOutput>({
@@ -106,6 +161,20 @@ export async function processUnderstand(
         id: `ev_doc_${evidenceList.length + 1}`,
         kind: 'document',
         docId: matchingDoc.id,
+        snippet,
+      };
+      evidenceList.push(ev);
+      return ev.id;
+    }
+
+    // Check web grounding context
+    if (
+      webGroundingContext &&
+      webGroundingContext.toLowerCase().includes(snippet.toLowerCase().trim())
+    ) {
+      const ev: Evidence = {
+        id: `ev_web_${evidenceList.length + 1}`,
+        kind: 'document',
         snippet,
       };
       evidenceList.push(ev);
@@ -203,6 +272,14 @@ export async function processUnderstand(
     }
   }
 
+  // Deduplicate and merge contacts
+  const mergedContacts: Contact[] = [...(previousCase?.contacts || [])];
+  for (const c of webContacts) {
+    if (!mergedContacts.some((existing) => existing.email === c.email)) {
+      mergedContacts.push(c);
+    }
+  }
+
   return {
     caseId: previousCase?.caseId || `case_${Date.now()}`,
     docType: finalDocType,
@@ -217,7 +294,7 @@ export async function processUnderstand(
     docs,
     facts,
     missing,
-    contacts: previousCase?.contacts || [],
+    contacts: mergedContacts,
     recipientHint: llmResult.recipientHint || previousCase?.recipientHint,
     round: currentRound,
   };

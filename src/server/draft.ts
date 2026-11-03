@@ -61,7 +61,13 @@ export async function generateDraft(request: DraftRequest): Promise<{
     temperature: groundingPolicy === 'creative' ? 0.7 : 0.2,
   });
 
-  const sourceText = `${caseState.segments.map((s) => s.text).join(' ')} ${caseState.docs.map((d) => d.markdown).join(' ')}`;
+  const contactText = (caseState.contacts || [])
+    .map((c) => `${c.label} ${c.email} ${c.snippet}`)
+    .join(' ');
+  const recipientText = caseState.recipientHint
+    ? `${caseState.recipientHint.org} ${caseState.recipientHint.dept || ''} ${caseState.recipientHint.location || ''}`
+    : '';
+  const sourceText = `${caseState.segments.map((s) => s.text).join(' ')} ${caseState.docs.map((d) => d.markdown).join(' ')} ${contactText} ${recipientText}`;
   const userFactValues = caseState.facts.map((f) => f.value);
 
   // Assemble and verify draft blocks

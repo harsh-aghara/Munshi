@@ -149,8 +149,9 @@ export async function ssrfSafeFetch(
       redirect: 'manual', // Manual redirect inspection to check each target IP
       signal: controller.signal,
       headers: {
-        'User-Agent': 'MunshiBot/1.0 (+https://munshi.app)',
-        Accept: 'text/html, text/plain',
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        Accept: 'text/html, text/plain, */*',
       },
     });
 

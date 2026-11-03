@@ -38,6 +38,44 @@ const URL_REGEX = /https?:\/\/[^\s/$.?#].[^\s]*/gi;
  */
 const PHONE_REGEX = /(?:\+?91[\s-]?)?[6789]\d{9}\b/g;
 
+const DUMMY_DOMAINS = new Set([
+  'example.com',
+  'example.org',
+  'example.net',
+  'test.com',
+  'domain.com',
+  'placeholder.com',
+  'sample.com',
+  'yoursite.com',
+]);
+
+/**
+ * Cleans an extracted email address by removing trailing punctuation
+ * and accidental glued sentence starts (e.g. "cmog@gujarat.gov.in.The" -> "cmog@gujarat.gov.in").
+ */
+export function cleanExtractedEmail(raw: string): string {
+  let email = raw.trim();
+  email = email.replace(/[.,;:!?)]+$/, '');
+  email = email.replace(/\.([A-Z][a-z]+)$/, '');
+  return email.toLowerCase().trim();
+}
+
+/**
+ * Checks whether an email address is a dummy or template placeholder.
+ */
+export function isDummyEmail(email: string): boolean {
+  const cleaned = cleanExtractedEmail(email);
+  const parts = cleaned.split('@');
+  if (parts.length !== 2) return true;
+  const [local, domain] = parts;
+  if (!local || !domain) return true;
+  if (DUMMY_DOMAINS.has(domain)) return true;
+  if (domain.endsWith('.example') || domain.endsWith('.invalid') || domain.endsWith('.test')) return true;
+  if (local === 'name' && domain.includes('example')) return true;
+  if (local === 'user' && domain.includes('example')) return true;
+  return false;
+}
+
 export interface ExtractedContacts {
   contacts: Contact[];
   portalUrls: string[];
@@ -59,8 +97,8 @@ export function extractContactsFromText(
   const emailMatches = normalized.match(EMAIL_REGEX) || [];
 
   for (const rawEmail of emailMatches) {
-    const cleanEmail = rawEmail.toLowerCase().trim();
-    if (seenEmails.has(cleanEmail)) continue;
+    const cleanEmail = cleanExtractedEmail(rawEmail);
+    if (!cleanEmail || seenEmails.has(cleanEmail) || isDummyEmail(cleanEmail)) continue;
     seenEmails.add(cleanEmail);
 
     // Look for surrounding text for context/snippet

@@ -88,10 +88,11 @@ ${toneInstruction}
 
 IMPORTANT RULES:
 1. Target Language Strictness: Every block (sender, recipient, subject, salutation, body, closing, enclosures) MUST be composed in ${targetLangLabel}.
-2. Strict Fidelity to Facts: Never invent facts, phone numbers, email addresses, or amounts. Accurately translate and express established facts in ${targetLangLabel} while preserving numbers, dates, references, and amounts exactly.
-3. Layout Rules:
+2. Strict Fidelity to Facts: Never invent unverified facts, phone numbers, email addresses, or amounts. Accurately translate and express established facts in ${targetLangLabel} while preserving numbers, dates, references, and amounts exactly.
+3. Layout & Recipient Rules:
    - For 'email' layout: include 'subject', 'salutation', 'body', 'closing'. Do NOT include postal address headers.
    - For 'letter' layout: include formal 'sender', 'date', 'recipient', 'subject', 'salutation', 'body', 'closing', 'enclosures' as required.
+   - For recipient block: Always format the recipient with the verified official organization/office, department, and location. Never use colloquial or mistaken designations (e.g. use official designations like Chief Minister / CMO rather than mistaken titles). Include verified contact emails if provided in the RECIPIENT & VERIFIED CONTACT DETAILS.
    - For 'verse' layout: format each 'stanza' block with line breaks intact.
    - For 'prose' layout: format into 'title', 'heading', and 'body' blocks.
 4. Tone Invariant: If adjusting tone or editing, maintain every number, date, and fact exactly as originally established.
@@ -134,6 +135,23 @@ IMPORTANT RULES:
   // Supply user inputs / parameters
   if (Object.keys(params).length > 0) {
     userParts.push(`TYPE PARAMETERS:\n${JSON.stringify(params, null, 2)}`);
+  }
+
+  // Supply recipient and verified contacts
+  if (caseState.recipientHint || (caseState.contacts && caseState.contacts.length > 0)) {
+    const recipientDetails: string[] = ['RECIPIENT & VERIFIED CONTACT DETAILS:'];
+    if (caseState.recipientHint) {
+      recipientDetails.push(`- Official Organization / Office: "${caseState.recipientHint.org}"`);
+      if (caseState.recipientHint.dept) recipientDetails.push(`- Department: "${caseState.recipientHint.dept}"`);
+      if (caseState.recipientHint.location) recipientDetails.push(`- Location: "${caseState.recipientHint.location}"`);
+    }
+    if (caseState.contacts && caseState.contacts.length > 0) {
+      recipientDetails.push(`- Verified Official Contacts:`);
+      caseState.contacts.forEach((c) => {
+        recipientDetails.push(`  * ${c.label}: ${c.email} (${c.trust})`);
+      });
+    }
+    userParts.push(recipientDetails.join('\n'));
   }
 
   // Supply speech / document excerpts

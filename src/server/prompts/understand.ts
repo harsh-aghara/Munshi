@@ -217,7 +217,11 @@ RULES & CONSTRAINTS:
    - CRITICAL LANGUAGE RULE: The "question" and "label" in each missingFact MUST be written in the user's spoken/dictation language (e.g. if the user speaks Hindi, write the question in natural Hindi like "कृपया अपना पूरा नाम बताएं"; if Gujarati, in natural Gujarati; if Tamil, in Tamil; if English, in English). NEVER output English questions when the user speaks an Indian language!
 6. Type Classification (if docTypeId is 'auto'):
    - Pick the most appropriate ID from the catalog and assign a confidence (0.0 to 1.0).
-7. Custom Type Proposal (if docTypeId is 'custom'):
+7. VERIFIED INTERNET CONTEXT (Search Grounding):
+   - When VERIFIED INTERNET SEARCH CONTEXT is provided, use it to ground all real-world facts, dates, events, offices, and entities rather than relying on literal, colloquial, or mistaken phrasing in the prompt (for example, recognizing the correct official designation, department, or verified incident details).
+   - In "recipientHint", provide the verified official organization/designation, department, and location.
+   - For extracted facts, extract the verified facts and cite verbatim snippets from user input or the verified internet context.
+8. Custom Type Proposal (if docTypeId is 'custom'):
    - Analyze user customBrief and propose a CustomDef with a suitable layout ('letter', 'email', 'prose', or 'verse'), a skeleton composed ONLY of allowed block roles, and minimal requiredFacts (each with key, label, and question).
    - Expected customDef shape:
      "customDef": {
@@ -231,7 +235,7 @@ RULES & CONSTRAINTS:
        "sendable": false,
        "hasRecipient": true
      }
-8. Output Format: Return ONLY a valid JSON object matching this schema:
+9. Output Format: Return ONLY a valid JSON object matching this schema:
 {
   "detectedDocTypeId": "consumer_complaint",
   "docTypeConfidence": 0.95,
@@ -270,8 +274,9 @@ export function buildUnderstandUserPrompt(params: {
   inputLang: string;
   answers?: Record<string, string>;
   previousFacts?: unknown[];
+  webGroundingContext?: string;
 }): string {
-  const { docTypeId, customBrief, segments, docs, inputLang, answers, previousFacts } = params;
+  const { docTypeId, customBrief, segments, docs, inputLang, answers, previousFacts, webGroundingContext } = params;
 
   const parts: string[] = [];
 
@@ -282,6 +287,10 @@ export function buildUnderstandUserPrompt(params: {
   parts.push(
     `User Spoken / Dictation Language: "${inputLang}" (${langLabel}).\nCRITICAL REQUIREMENT: Formulate all missing facts "question" and "label" in ${langLabel} so the user is asked questions in the exact language they speak!`
   );
+
+  if (webGroundingContext) {
+    parts.push(webGroundingContext);
+  }
 
   if (customBrief) {
     parts.push(`User Custom Brief:\n<custom_brief>\n${customBrief}\n</custom_brief>`);
