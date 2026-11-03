@@ -156,3 +156,11 @@ test('Zustand store: resets new case while strictly keeping preferences (FE-2)',
   assert.equal(state.prefs.dictationLang, 'gu-IN');
   assert.deepEqual(state.prefs.tone, { id: 'persuasive' });
 });
+
+test('Zustand store: initial state defaults safely for SSR hydration and marks isHydrated on rehydrate', () => {
+  const store = useMunshiStore.getState();
+  assert.equal(typeof store.isHydrated, 'boolean');
+  store.rehydrate();
+  assert.equal(useMunshiStore.getState().isHydrated, true);
+});
+

@@ -31,6 +31,7 @@ export interface MunshiStoreState {
   // Access Code (Session Storage)
   accessCode: string | null;
   isAccessDenied: boolean;
+  isHydrated: boolean;
 
   // UI State
   isLoading: boolean;
@@ -128,21 +129,18 @@ function loadInitialAccessCode(): string | null {
 }
 
 export const useMunshiStore = create<MunshiStoreState>((set, get) => {
-  const initialPrefs = loadInitialPrefs();
-  const initialSession = loadInitialSession();
-  const initialAccessCode = loadInitialAccessCode();
-
   return {
-    caseState: initialSession.caseState,
-    draft: initialSession.draft,
-    draftHistory: initialSession.draft ? [initialSession.draft] : [],
-    draftHistoryIndex: initialSession.draft ? 0 : -1,
-    contacts: initialSession.contacts,
+    caseState: null,
+    draft: null,
+    draftHistory: [],
+    draftHistoryIndex: -1,
+    contacts: [],
     focusedEvidenceId: null,
 
-    prefs: initialPrefs,
-    accessCode: initialAccessCode,
+    prefs: defaultPrefs,
+    accessCode: null,
     isAccessDenied: false,
+    isHydrated: false,
 
     isLoading: false,
     loadingMessage: '',
@@ -384,6 +382,7 @@ export const useMunshiStore = create<MunshiStoreState>((set, get) => {
         draftHistoryIndex: session.draft ? 0 : -1,
         contacts: session.contacts,
         accessCode,
+        isHydrated: true,
       });
     },
   };
