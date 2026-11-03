@@ -36,7 +36,7 @@ export const languages = [
     stt: true,
     sttMode: 'transcribe',
     tts: true,
-    ttsVoice: 'en-IN-1',
+    ttsVoice: 'ritu',
     translate: true,
     llm: true,
   },
@@ -49,7 +49,7 @@ export const languages = [
     stt: true,
     sttMode: 'codemix',
     tts: true,
-    ttsVoice: 'hi-IN-1',
+    ttsVoice: 'ritu',
     translate: true,
     llm: true,
     registerRules:
@@ -64,7 +64,7 @@ export const languages = [
     stt: true,
     sttMode: 'codemix',
     tts: true,
-    ttsVoice: 'bn-IN-1',
+    ttsVoice: 'ritu',
     translate: true,
     llm: true,
     registerRules:
@@ -79,7 +79,7 @@ export const languages = [
     stt: true,
     sttMode: 'codemix',
     tts: true,
-    ttsVoice: 'gu-IN-1',
+    ttsVoice: 'ritu',
     translate: true,
     llm: true,
     registerRules:
@@ -94,7 +94,7 @@ export const languages = [
     stt: true,
     sttMode: 'codemix',
     tts: true,
-    ttsVoice: 'kn-IN-1',
+    ttsVoice: 'kavitha',
     translate: true,
     llm: true,
     registerRules:
@@ -109,7 +109,7 @@ export const languages = [
     stt: true,
     sttMode: 'codemix',
     tts: true,
-    ttsVoice: 'ml-IN-1',
+    ttsVoice: 'kavitha',
     translate: true,
     llm: true,
     registerRules:
@@ -124,7 +124,7 @@ export const languages = [
     stt: true,
     sttMode: 'codemix',
     tts: true,
-    ttsVoice: 'mr-IN-1',
+    ttsVoice: 'ritu',
     translate: true,
     llm: true,
     registerRules:
@@ -139,7 +139,7 @@ export const languages = [
     stt: true,
     sttMode: 'codemix',
     tts: true,
-    ttsVoice: 'or-IN-1',
+    ttsVoice: 'ritu',
     translate: true,
     llm: true,
     registerRules:
@@ -154,7 +154,7 @@ export const languages = [
     stt: true,
     sttMode: 'codemix',
     tts: true,
-    ttsVoice: 'pa-IN-1',
+    ttsVoice: 'ritu',
     translate: true,
     llm: true,
     registerRules:
@@ -169,7 +169,7 @@ export const languages = [
     stt: true,
     sttMode: 'codemix',
     tts: true,
-    ttsVoice: 'ta-IN-1',
+    ttsVoice: 'kavitha',
     translate: true,
     llm: true,
     registerRules:
@@ -184,7 +184,7 @@ export const languages = [
     stt: true,
     sttMode: 'codemix',
     tts: true,
-    ttsVoice: 'te-IN-1',
+    ttsVoice: 'kavitha',
     translate: true,
     llm: true,
     registerRules:

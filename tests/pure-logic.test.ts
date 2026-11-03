@@ -320,6 +320,9 @@ test('languages registry supports Indian languages and queries', () => {
     if (lang.stt && lang.sttMode) {
       assert.ok(validSarvamModes.has(lang.sttMode), `Language ${lang.code} has invalid sttMode: ${lang.sttMode}`);
     }
+    if (lang.tts && lang.ttsVoice) {
+      assert.ok(typeof lang.ttsVoice === 'string' && lang.ttsVoice.length > 0);
+    }
   }
 });
 

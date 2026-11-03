@@ -59,6 +59,14 @@ export function chunkTextForTts(text: string, limit = BULBUL_CHAR_LIMIT): string
   return chunks.length > 0 ? chunks : [text.slice(0, limit)];
 }
 
+export const BULBUL_SPEAKERS = new Set([
+  'aditya', 'ritu', 'ashutosh', 'priya', 'neha', 'rahul', 'pooja', 'rohan',
+  'simran', 'kavya', 'amit', 'dev', 'ishita', 'shreya', 'ratan', 'varun',
+  'manan', 'sumit', 'roopa', 'kabir', 'aayan', 'shubh', 'advait', 'anand',
+  'tanya', 'tarun', 'sunny', 'mani', 'gokul', 'vijay', 'shruti', 'suhani',
+  'mohit', 'kavitha', 'rehan', 'soham', 'rupali',
+]);
+
 export async function synthesizeSpeech(
   options: TtsOptions,
 ): Promise<{ audios: string[] }> {
@@ -73,7 +81,8 @@ export async function synthesizeSpeech(
   }
 
   const chunks = chunkTextForTts(text);
-  const speaker = voice || langDef.ttsVoice || 'en-IN-1';
+  const rawSpeaker = (voice || langDef.ttsVoice || 'ritu').toLowerCase();
+  const speaker = BULBUL_SPEAKERS.has(rawSpeaker) ? rawSpeaker : 'ritu';
 
   // Request TTS for all chunks
   const response = await sarvamFetch<SarvamTtsResponse>(

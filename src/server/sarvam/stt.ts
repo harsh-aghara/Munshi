@@ -56,8 +56,56 @@ export async function transcribeAudio(
   ]);
   const mode = VALID_SARVAM_MODES.has(rawMode) ? rawMode : 'codemix';
 
+  // Sarvam strictly validates MIME types against an exact string whitelist without codec parameters.
+  // Browsers often report 'audio/webm;codecs=opus', which Sarvam rejects if ';codecs=...' is present.
+  let cleanType = (audioBlob.type || 'audio/webm').split(';')[0].trim().toLowerCase();
+  const ALLOWED_SARVAM_AUDIO_TYPES = new Set([
+    'audio/mpeg',
+    'audio/mp3',
+    'audio/mpeg3',
+    'audio/x-mpeg-3',
+    'audio/x-mp3',
+    'audio/wav',
+    'audio/x-wav',
+    'audio/wave',
+    'audio/pcm_s16le',
+    'audio/l16',
+    'audio/raw',
+    'application/octet-stream',
+    'audio/aac',
+    'audio/x-aac',
+    'audio/aiff',
+    'audio/x-aiff',
+    'audio/ogg',
+    'audio/opus',
+    'audio/flac',
+    'audio/x-flac',
+    'audio/mp4',
+    'audio/x-m4a',
+    'audio/amr',
+    'audio/x-ms-wma',
+    'audio/webm',
+    'video/webm',
+  ]);
+  if (!ALLOWED_SARVAM_AUDIO_TYPES.has(cleanType)) {
+    cleanType = 'audio/webm';
+  }
+
+  const ext = cleanType.includes('wav')
+    ? 'wav'
+    : cleanType.includes('mp4') || cleanType.includes('m4a')
+    ? 'mp4'
+    : cleanType.includes('ogg') || cleanType.includes('opus')
+    ? 'ogg'
+    : cleanType.includes('mp3') || cleanType.includes('mpeg')
+    ? 'mp3'
+    : 'webm';
+
+  const audioBuffer = await audioBlob.arrayBuffer();
+  const normalizedBlob = new Blob([audioBuffer], { type: cleanType });
+
   const formData = new FormData();
-  formData.append('file', audioBlob, 'audio.webm');
+  formData.append('file', normalizedBlob, `audio.${ext}`);
   formData.append('model', model);
   formData.append('language_code', langCode);
   formData.append('mode', mode);
