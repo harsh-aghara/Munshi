@@ -1,0 +1,37 @@
+{
+  "name": "munshi",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "node --loader ./scripts/loader.mjs --experimental-strip-types tests/pure-logic.test.ts && node --loader ./scripts/loader.mjs --experimental-strip-types tests/api-integration.test.ts",
+    "smoke": "node --loader ./scripts/loader.mjs --experimental-strip-types scripts/smoke.ts",
+    "probe": "node --loader ./scripts/loader.mjs --experimental-strip-types scripts/probe-sarvam.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/harsh-aghara/Munshi.git"
+  },
+  "keywords": [],
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/harsh-aghara/Munshi/issues"
+  },
+  "homepage": "https://github.com/harsh-aghara/Munshi#readme",
+  "dependencies": {
+    "@tailwindcss/postcss": "^4.3.4",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "next": "^16.4.4",
+    "postcss": "^8.5.32",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "tailwindcss": "^4.3.4",
+    "typescript": "^7.0.2",
+    "zod": "^4.6.7"
+  }
+}
