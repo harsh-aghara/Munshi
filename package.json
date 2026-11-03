@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "NODE_OPTIONS='--experimental-require-module' next build",
     "start": "next start",
     "test": "node --loader ./scripts/loader.mjs --experimental-strip-types tests/pure-logic.test.ts && node --loader ./scripts/loader.mjs --experimental-strip-types tests/api-integration.test.ts && node --loader ./scripts/loader.mjs --experimental-strip-types tests/frontend.test.ts",
     "smoke": "node --loader ./scripts/loader.mjs --experimental-strip-types scripts/smoke.ts",
@@ -39,6 +39,6 @@
     "zustand": "^5.0.16"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.12.0"
   }
 }

@@ -7,7 +7,9 @@ services:
     startCommand: npm start
     envVars:
       - key: NODE_VERSION
-        value: 22.0.0
+        value: 22.14.0
+      - key: NODE_OPTIONS
+        value: "--experimental-require-module"
       - key: ACCESS_CODE
         sync: false
       - key: SARVAM_API_KEY
