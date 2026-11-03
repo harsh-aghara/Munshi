@@ -10,6 +10,7 @@ import { sarvamFetch } from './client';
 import { extractContactsFromText } from '../extract';
 import type { Contact, Fact } from '@/contracts';
 import { AppError } from '../errors';
+import zlib from 'node:zlib';
 
 export type AllowedFileType = 'pdf' | 'png' | 'jpeg';
 
@@ -71,6 +72,52 @@ export function getVisionJob(jobId: string): VisionJobState | undefined {
   return jobs.get(jobId);
 }
 
+/**
+ * Helper to extract markdown files from Sarvam Doc AI zip output in memory without external dependencies.
+ */
+function parseZipInMem(buf: Buffer): Record<string, string> {
+  const files: Record<string, string> = {};
+  const eocdSig = Buffer.from([0x50, 0x4b, 0x05, 0x06]);
+  const eocdOffset = buf.lastIndexOf(eocdSig);
+  if (eocdOffset === -1) return files;
+
+  const cdOffset = buf.readUInt32LE(eocdOffset + 16);
+  const totalEntries = buf.readUInt16LE(eocdOffset + 10);
+
+  let cur = cdOffset;
+  for (let i = 0; i < totalEntries && cur < buf.length - 46; i++) {
+    if (buf.readUInt32LE(cur) !== 0x02014b50) break;
+    const method = buf.readUInt16LE(cur + 10);
+    const compSize = buf.readUInt32LE(cur + 20);
+    const nameLen = buf.readUInt16LE(cur + 28);
+    const extraLen = buf.readUInt16LE(cur + 30);
+    const commentLen = buf.readUInt16LE(cur + 32);
+    const localHeaderOffset = buf.readUInt32LE(cur + 42);
+
+    const name = buf.subarray(cur + 46, cur + 46 + nameLen).toString('utf-8');
+
+    if (localHeaderOffset + 30 <= buf.length) {
+      const localNameLen = buf.readUInt16LE(localHeaderOffset + 26);
+      const localExtraLen = buf.readUInt16LE(localHeaderOffset + 28);
+      const dataOffset = localHeaderOffset + 30 + localNameLen + localExtraLen;
+
+      if (dataOffset + compSize <= buf.length) {
+        const compData = buf.subarray(dataOffset, dataOffset + compSize);
+        if (method === 0) {
+          files[name] = compData.toString('utf-8');
+        } else if (method === 8) {
+          try {
+            files[name] = zlib.inflateRawSync(compData).toString('utf-8');
+          } catch {}
+        }
+      }
+    }
+
+    cur += 46 + nameLen + extraLen + commentLen;
+  }
+  return files;
+}
+
 export async function startVisionJob(
   fileBuffer: Uint8Array,
   fileName: string,
@@ -95,7 +142,7 @@ export async function startVisionJob(
     if (j.createdAt < fifteenMinsAgo) jobs.delete(id);
   }
 
-  // Asynchronously execute OCR
+  // Asynchronously execute Sarvam Document AI pipeline
   (async () => {
     try {
       const mime =
@@ -111,35 +158,82 @@ export async function startVisionJob(
         new Blob([fileBuffer as unknown as BlobPart], { type: mime }),
         fileName,
       );
+      formData.append('output_format', 'md');
+      formData.append('language', 'en-IN');
 
-      // Call Sarvam Document OCR endpoint
-      const response = await sarvamFetch<{
-        pages?: Array<{ page_number: number; text?: string; markdown?: string }>;
-        markdown?: string;
-        text?: string;
-      }>(
-        '/document/ocr',
+      // 1. Submit Doc AI parsing job
+      const startRes = await sarvamFetch<{ job_id: string }>(
+        '/doc-ai/v1/job/parse',
         {
           method: 'POST',
           body: formData,
         },
-        { timeoutMs: 60_000 },
+        { timeoutMs: 30_000 },
       );
 
-      let markdown = response.markdown || response.text || '';
-      let pageCount = 1;
+      const sarvamJobId = startRes.job_id;
+      if (!sarvamJobId) {
+        throw new Error('Sarvam Doc AI did not return a job_id');
+      }
 
-      if (response.pages && response.pages.length > 0) {
-        pageCount = response.pages.length;
-        if (pageCount > 10) {
-          throw new AppError(
-            'FILE_UNSUPPORTED',
-            'Document exceeds maximum 10 pages limit.',
-          );
+      // 2. Poll Sarvam for completion
+      const pollStartTime = Date.now();
+      let statusData: { status: string; usage?: { pages_total?: number } } | null = null;
+
+      while (Date.now() - pollStartTime < 60_000) {
+        await new Promise((r) => setTimeout(r, 2000));
+        const res = await sarvamFetch<{ status: string; usage?: { pages_total?: number } }>(
+          `/doc-ai/v1/job/${sarvamJobId}/status`,
+          { method: 'GET' },
+          { timeoutMs: 15_000 },
+        );
+
+        const elapsed = Date.now() - pollStartTime;
+        jobState.progress = Math.min(85, Math.round(20 + (elapsed / 60_000) * 65));
+
+        if (res.status === 'completed' || res.status === 'partially_completed') {
+          statusData = res;
+          break;
+        } else if (res.status === 'failed' || res.status === 'rejected') {
+          throw new Error(`Sarvam Document AI job failed with status: ${res.status}`);
         }
-        markdown = response.pages
-          .map((p) => p.markdown || p.text || '')
-          .join('\n\n--- Page Break ---\n\n');
+      }
+
+      if (!statusData) {
+        throw new Error('Document processing timed out after 60 seconds.');
+      }
+
+      // 3. Get download URL
+      const dlRes = await sarvamFetch<{ url: string }>(
+        `/doc-ai/v1/job/${sarvamJobId}/download-url`,
+        { method: 'GET' },
+        { timeoutMs: 15_000 },
+      );
+
+      if (!dlRes.url) {
+        throw new Error('Sarvam did not return a document download URL.');
+      }
+
+      // 4. Download and unpack parsed markdown
+      const fileRes = await fetch(dlRes.url);
+      if (!fileRes.ok) {
+        throw new Error(`Failed to download parsed document: HTTP ${fileRes.status}`);
+      }
+
+      const fileBuf = Buffer.from(await fileRes.arrayBuffer());
+      let markdown = '';
+
+      if (fileBuf.length > 4 && fileBuf.readUInt32LE(0) === 0x04034b50) {
+        const extracted = parseZipInMem(fileBuf);
+        const mdEntry = Object.entries(extracted).find(([name]) => name.endsWith('.md'));
+        markdown = mdEntry ? mdEntry[1] : '';
+      } else {
+        markdown = fileBuf.toString('utf-8');
+      }
+
+      const pageCount = statusData.usage?.pages_total || 1;
+      if (pageCount > 10) {
+        throw new AppError('FILE_UNSUPPORTED', 'Document exceeds maximum 10 pages limit.');
       }
 
       // Extract contacts from parsed markdown
