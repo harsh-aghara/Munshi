@@ -40,8 +40,12 @@ export type ToneChoice = z.infer<typeof ToneChoiceSchema>;
 
 export const SegmentSchema = z.object({
   id: z.string(),
-  startMs: z.number(),
-  endMs: z.number(),
+  startMs: z
+    .union([z.number(), z.null(), z.undefined()])
+    .transform((val) => (typeof val === 'number' && !isNaN(val) ? val : 0)),
+  endMs: z
+    .union([z.number(), z.null(), z.undefined()])
+    .transform((val) => (typeof val === 'number' && !isNaN(val) ? val : 0)),
   text: z.string(),
   lang: LangSchema,
 });

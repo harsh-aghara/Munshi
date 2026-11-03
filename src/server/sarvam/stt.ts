@@ -12,11 +12,13 @@ export interface SarvamSttResponse {
   transcript: string;
   language_code?: string;
   timestamps?: {
-    words?: Array<{
+    words?: string[] | Array<{
       word: string;
-      start_time_seconds: number;
-      end_time_seconds: number;
+      start_time_seconds?: number;
+      end_time_seconds?: number;
     }>;
+    start_time_seconds?: number[];
+    end_time_seconds?: number[];
   };
 }
 
@@ -123,34 +125,68 @@ export async function transcribeAudio(
   const detectedLang = result.language_code || (lang === 'auto' ? 'en-IN' : lang);
   const segments: Segment[] = [];
 
-  // If words with timestamps are present, we can group them into sentence-sized segments
-  if (result.timestamps?.words && result.timestamps.words.length > 0) {
-    const words = result.timestamps.words;
-    let currentWords: string[] = [];
-    let startMs = Math.round(words[0].start_time_seconds * 1000);
-    let endMs = startMs;
+  // Sarvam saaras:v3 returns parallel arrays:
+  // timestamps: { words: string[], start_time_seconds: number[], end_time_seconds: number[] }
+  // We normalize to: WordItem[] = { word: string, startMs: number, endMs: number }
+  interface WordItem {
+    word: string;
+    startMs: number;
+    endMs: number;
+  }
 
-    for (let i = 0; i < words.length; i++) {
-      const w = words[i];
+  const normalizedWords: WordItem[] = [];
+  const rawWords = result.timestamps?.words;
+  const startTimes = result.timestamps?.start_time_seconds;
+  const endTimes = result.timestamps?.end_time_seconds;
+
+  if (Array.isArray(rawWords) && rawWords.length > 0) {
+    for (let i = 0; i < rawWords.length; i++) {
+      const item = rawWords[i];
+      if (typeof item === 'string') {
+        // Parallel arrays structure
+        const rawStart = Array.isArray(startTimes) ? startTimes[i] : undefined;
+        const rawEnd = Array.isArray(endTimes) ? endTimes[i] : undefined;
+        const s = typeof rawStart === 'number' && !isNaN(rawStart) ? Math.round(rawStart * 1000) : 0;
+        const e = typeof rawEnd === 'number' && !isNaN(rawEnd) ? Math.round(rawEnd * 1000) : s;
+        normalizedWords.push({ word: item, startMs: s, endMs: e });
+      } else if (item && typeof item === 'object') {
+        // Object structure
+        const rawStart = (item as any).start_time_seconds;
+        const rawEnd = (item as any).end_time_seconds;
+        const s = typeof rawStart === 'number' && !isNaN(rawStart) ? Math.round(rawStart * 1000) : 0;
+        const e = typeof rawEnd === 'number' && !isNaN(rawEnd) ? Math.round(rawEnd * 1000) : s;
+        normalizedWords.push({ word: (item as any).word || '', startMs: s, endMs: e });
+      }
+    }
+  }
+
+  // If normalized words are present, group them into sentence-sized segments
+  if (normalizedWords.length > 0) {
+    let currentWords: string[] = [];
+    let segStart = normalizedWords[0].startMs;
+    let segEnd = segStart;
+
+    for (let i = 0; i < normalizedWords.length; i++) {
+      const w = normalizedWords[i];
       currentWords.push(w.word);
-      endMs = Math.round(w.end_time_seconds * 1000);
+      segEnd = w.endMs;
 
       // Break on sentence terminators or when ~15 words accumulate
       const isTerminator = /[.?!।|]/.test(w.word);
       const isLongEnough = currentWords.length >= 15;
-      const isLast = i === words.length - 1;
+      const isLast = i === normalizedWords.length - 1;
 
       if (isTerminator || isLongEnough || isLast) {
         segments.push({
           id: `seg_${Date.now()}_${segments.length + 1}`,
-          startMs,
-          endMs,
+          startMs: typeof segStart === 'number' && !isNaN(segStart) ? segStart : 0,
+          endMs: typeof segEnd === 'number' && !isNaN(segEnd) ? segEnd : 0,
           text: currentWords.join(' ').trim(),
           lang: detectedLang,
         });
         currentWords = [];
-        if (!isLast && words[i + 1]) {
-          startMs = Math.round(words[i + 1].start_time_seconds * 1000);
+        if (!isLast && normalizedWords[i + 1]) {
+          segStart = normalizedWords[i + 1].startMs;
         }
       }
     }

@@ -339,6 +339,20 @@ test('Zod contracts validate core domain structures', () => {
   });
   assert.equal(validSegment.success, true);
 
+  // Segment validation with null/undefined timestamps (resilience test)
+  const nullSegment = SegmentSchema.safeParse({
+    id: 'seg_2',
+    startMs: null,
+    endMs: null,
+    text: 'Namaste',
+    lang: 'hi-IN',
+  });
+  assert.equal(nullSegment.success, true);
+  if (nullSegment.success) {
+    assert.equal(nullSegment.data.startMs, 0);
+    assert.equal(nullSegment.data.endMs, 0);
+  }
+
   // Block role validation
   const validRole = BlockRoleSchema.safeParse('salutation');
   assert.equal(validRole.success, true);
