@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: munshi-backend
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 22.0.0
+      - key: ACCESS_CODE
+        sync: false
+      - key: SARVAM_API_KEY
+        sync: false
+      - key: SEARCH_PROVIDER
+        value: tavily
+      - key: SEARCH_API_KEY
+        sync: false
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
