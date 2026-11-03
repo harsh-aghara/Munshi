@@ -32,6 +32,7 @@ import {
 } from '../src/config/tones.ts';
 
 import {
+  languages,
   isValidLang,
   isSttSupported,
   isTtsSupported,
@@ -313,6 +314,13 @@ test('languages registry supports Indian languages and queries', () => {
   assert.equal(isSttSupported('hi-IN'), true);
   assert.equal(isTtsSupported('hi-IN'), true);
   assert.equal(isTranslateSupported('gu-IN'), true);
+
+  const validSarvamModes = new Set(['transcribe', 'translate', 'indic-en', 'verbatim', 'translit', 'codemix']);
+  for (const lang of languages) {
+    if (lang.stt && lang.sttMode) {
+      assert.ok(validSarvamModes.has(lang.sttMode), `Language ${lang.code} has invalid sttMode: ${lang.sttMode}`);
+    }
+  }
 });
 
 // ── 6. Contracts Schema Validation ──────────────────────────────────────────

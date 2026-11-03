@@ -41,15 +41,26 @@ export async function transcribeAudio(
   const langCode = lang === 'auto' ? 'unknown' : lang;
   const model = 'saaras:v3';
 
+  // Defensive mode mapping ensuring strictly valid Sarvam STT modes:
+  // 'transcribe' | 'translate' | 'indic-en' | 'verbatim' | 'translit' | 'codemix'
+  let rawMode: string = langDef?.sttMode || 'codemix';
+  if (rawMode === 'code-mix') rawMode = 'codemix';
+  if (rawMode === 'formal') rawMode = 'transcribe';
+  const VALID_SARVAM_MODES = new Set([
+    'transcribe',
+    'translate',
+    'indic-en',
+    'verbatim',
+    'translit',
+    'codemix',
+  ]);
+  const mode = VALID_SARVAM_MODES.has(rawMode) ? rawMode : 'codemix';
+
   const formData = new FormData();
   formData.append('file', audioBlob, 'audio.webm');
   formData.append('model', model);
-  if (langCode !== 'unknown') {
-    formData.append('language_code', langCode);
-  }
-  if (langDef?.sttMode) {
-    formData.append('mode', langDef.sttMode);
-  }
+  formData.append('language_code', langCode);
+  formData.append('mode', mode);
   formData.append('with_timestamps', 'true');
 
   const result = await sarvamFetch<SarvamSttResponse>(

@@ -3,6 +3,14 @@
  * Shared between backend and frontend. Contains no secrets.
  */
 
+export type SarvamSttMode =
+  | 'transcribe'
+  | 'translate'
+  | 'indic-en'
+  | 'verbatim'
+  | 'translit'
+  | 'codemix';
+
 export interface LanguageDef {
   code: string;
   label: string;
@@ -10,7 +18,7 @@ export interface LanguageDef {
   script: string;
   fontFamily: string;
   stt: boolean;
-  sttMode?: string;
+  sttMode?: SarvamSttMode;
   tts: boolean;
   ttsVoice?: string;
   translate: boolean;
@@ -26,7 +34,7 @@ export const languages = [
     script: 'Latin',
     fontFamily: "'Noto Sans', sans-serif",
     stt: true,
-    sttMode: 'formal',
+    sttMode: 'transcribe',
     tts: true,
     ttsVoice: 'en-IN-1',
     translate: true,
@@ -39,7 +47,7 @@ export const languages = [
     script: 'Devanagari',
     fontFamily: "'Noto Sans Devanagari', sans-serif",
     stt: true,
-    sttMode: 'code-mix',
+    sttMode: 'codemix',
     tts: true,
     ttsVoice: 'hi-IN-1',
     translate: true,
@@ -54,7 +62,7 @@ export const languages = [
     script: 'Bengali',
     fontFamily: "'Noto Sans Bengali', sans-serif",
     stt: true,
-    sttMode: 'code-mix',
+    sttMode: 'codemix',
     tts: true,
     ttsVoice: 'bn-IN-1',
     translate: true,
@@ -69,7 +77,7 @@ export const languages = [
     script: 'Gujarati',
     fontFamily: "'Noto Sans Gujarati', sans-serif",
     stt: true,
-    sttMode: 'code-mix',
+    sttMode: 'codemix',
     tts: true,
     ttsVoice: 'gu-IN-1',
     translate: true,
@@ -84,7 +92,7 @@ export const languages = [
     script: 'Kannada',
     fontFamily: "'Noto Sans Kannada', sans-serif",
     stt: true,
-    sttMode: 'code-mix',
+    sttMode: 'codemix',
     tts: true,
     ttsVoice: 'kn-IN-1',
     translate: true,
@@ -99,7 +107,7 @@ export const languages = [
     script: 'Malayalam',
     fontFamily: "'Noto Sans Malayalam', sans-serif",
     stt: true,
-    sttMode: 'code-mix',
+    sttMode: 'codemix',
     tts: true,
     ttsVoice: 'ml-IN-1',
     translate: true,
@@ -114,7 +122,7 @@ export const languages = [
     script: 'Devanagari',
     fontFamily: "'Noto Sans Devanagari', sans-serif",
     stt: true,
-    sttMode: 'code-mix',
+    sttMode: 'codemix',
     tts: true,
     ttsVoice: 'mr-IN-1',
     translate: true,
@@ -129,7 +137,7 @@ export const languages = [
     script: 'Odia',
     fontFamily: "'Noto Sans Oriya', sans-serif",
     stt: true,
-    sttMode: 'formal',
+    sttMode: 'codemix',
     tts: true,
     ttsVoice: 'or-IN-1',
     translate: true,
@@ -144,7 +152,7 @@ export const languages = [
     script: 'Gurmukhi',
     fontFamily: "'Noto Sans Gurmukhi', sans-serif",
     stt: true,
-    sttMode: 'code-mix',
+    sttMode: 'codemix',
     tts: true,
     ttsVoice: 'pa-IN-1',
     translate: true,
@@ -159,7 +167,7 @@ export const languages = [
     script: 'Tamil',
     fontFamily: "'Noto Sans Tamil', sans-serif",
     stt: true,
-    sttMode: 'code-mix',
+    sttMode: 'codemix',
     tts: true,
     ttsVoice: 'ta-IN-1',
     translate: true,
@@ -174,7 +182,7 @@ export const languages = [
     script: 'Telugu',
     fontFamily: "'Noto Sans Telugu', sans-serif",
     stt: true,
-    sttMode: 'code-mix',
+    sttMode: 'codemix',
     tts: true,
     ttsVoice: 'te-IN-1',
     translate: true,
