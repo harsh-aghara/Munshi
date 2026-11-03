@@ -22,6 +22,11 @@ export const POST = formDataHandler(async (formData, ctx) => {
     );
   }
 
+  // Handle empty or micro-click recordings gracefully
+  if (audioFile.size < 500) {
+    return Response.json({ segments: [] });
+  }
+
   // Audio size cap (max 25MB)
   if (audioFile.size > 25 * 1024 * 1024) {
     throw new AppError(

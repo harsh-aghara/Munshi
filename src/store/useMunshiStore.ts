@@ -68,6 +68,7 @@ export interface MunshiStoreState {
   setShowLangChangeDialog: (dialog: { targetLang: Lang } | null) => void;
   setShowCustomTypeModal: (show: boolean) => void;
   resetNewCase: () => void;
+  rehydrate: () => void;
 }
 
 const defaultPrefs: Prefs = {
@@ -368,6 +369,21 @@ export const useMunshiStore = create<MunshiStoreState>((set, get) => {
         showNewCaseModal: false,
         showLangChangeDialog: null,
         showCustomTypeModal: false,
+      });
+    },
+
+    rehydrate: () => {
+      const prefs = loadInitialPrefs();
+      const session = loadInitialSession();
+      const accessCode = loadInitialAccessCode();
+      set({
+        prefs,
+        caseState: session.caseState,
+        draft: session.draft,
+        draftHistory: session.draft ? [session.draft] : [],
+        draftHistoryIndex: session.draft ? 0 : -1,
+        contacts: session.contacts,
+        accessCode,
       });
     },
   };

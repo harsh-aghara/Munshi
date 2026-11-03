@@ -76,9 +76,14 @@ export const VoiceRecorderWidget: React.FC<VoiceRecorderProps> = ({
     setAudioLevel(0);
 
     try {
-      setLoading(true, t('capture.processing_audio', prefs.uiLang));
       const blob = await recorderRef.current.stop();
 
+      // If recording was an accidental micro-click (< 500 bytes or 0 seconds), ignore cleanly
+      if (blob.size < 500 || recordSeconds === 0) {
+        return;
+      }
+
+      setLoading(true, t('capture.processing_audio', prefs.uiLang));
       const lang = prefs.dictationLang || 'auto';
       const result = await MunshiApiClient.speechToText(blob, lang);
 

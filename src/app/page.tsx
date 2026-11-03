@@ -15,7 +15,11 @@ import { t } from '@/lib/i18n';
 import { Mic, FileText } from 'lucide-react';
 
 export default function Home() {
-  const { activePhoneTab, setActivePhoneTab, prefs, draft } = useMunshiStore();
+  const { activePhoneTab, setActivePhoneTab, prefs, draft, rehydrate } = useMunshiStore();
+
+  React.useEffect(() => {
+    rehydrate();
+  }, [rehydrate]);
 
   return (
     <main className="min-h-screen flex flex-col bg-slate-50">

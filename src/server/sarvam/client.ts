@@ -89,7 +89,24 @@ export async function sarvamFetch<T = unknown>(
       try {
         const errJson = await res.json();
         if (errJson && typeof errJson === 'object') {
-          errorMsg = errJson.message || errJson.error || JSON.stringify(errJson);
+          if (typeof errJson.message === 'string') {
+            errorMsg = errJson.message;
+          } else if (typeof errJson.error === 'string') {
+            errorMsg = errJson.error;
+          } else if (
+            errJson.error &&
+            typeof errJson.error === 'object' &&
+            typeof (errJson.error as any).message === 'string'
+          ) {
+            errorMsg = (errJson.error as any).message;
+          } else if (errJson.detail) {
+            errorMsg =
+              typeof errJson.detail === 'string'
+                ? errJson.detail
+                : JSON.stringify(errJson.detail);
+          } else {
+            errorMsg = JSON.stringify(errJson);
+          }
         }
       } catch {
         // Ignore json parse error on non-json error responses

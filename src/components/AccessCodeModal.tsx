@@ -7,8 +7,18 @@ import { KeyRound, Lock, AlertCircle } from 'lucide-react';
 
 export const AccessCodeModal: React.FC = () => {
   const { accessCode, isAccessDenied, setAccessCode, prefs } = useMunshiStore();
+  const [mounted, setMounted] = useState(false);
   const [inputCode, setInputCode] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Avoid hydration mismatch by waiting until mounted on client
+  if (!mounted) {
+    return null;
+  }
 
   // If we already have an access code and it's not denied, don't show modal
   if (accessCode && !isAccessDenied) {

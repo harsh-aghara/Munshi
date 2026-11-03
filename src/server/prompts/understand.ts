@@ -5,7 +5,109 @@ import { docTypes } from '@/config/doctypes';
 import { BlockRoleSchema, type CustomDef } from '@/contracts';
 import { z } from 'zod';
 
-export const UnderstandLlmOutputSchema = z.object({
+const ExtractedFactItemSchema = z.preprocess((val: any) => {
+  if (val && typeof val === 'object') {
+    let status = val.status;
+    if (!['extracted', 'corrected', 'confirmed', 'conflict'].includes(status)) {
+      status = 'extracted';
+    }
+    return {
+      ...val,
+      key: String(val.key || val.field || 'fact'),
+      label: String(val.label || val.field || 'Fact'),
+      value: String(val.value ?? ''),
+      evidenceSnippet: String(val.evidenceSnippet || val.snippet || val.value || ''),
+      confidence: typeof val.confidence === 'number' ? val.confidence : 0.85,
+      status,
+    };
+  }
+  return val;
+}, z.object({
+  key: z.string().default('fact'),
+  label: z.string().default('Fact'),
+  value: z.string().default(''),
+  evidenceSnippet: z.string().default(''),
+  confidence: z.number().default(0.85),
+  status: z
+    .enum(['extracted', 'corrected', 'confirmed', 'conflict'])
+    .default('extracted'),
+  previousValue: z.string().optional(),
+  conflictAlternatives: z
+    .array(
+      z.object({
+        value: z.string(),
+        evidenceSnippet: z.string(),
+      }),
+    )
+    .optional(),
+}));
+
+const MissingFactItemSchema = z.preprocess((val) => {
+  if (typeof val === 'string') {
+    return {
+      key: val.toLowerCase().replace(/\s+/g, '_'),
+      label: val,
+      question: `Please specify: ${val}`,
+      required: false,
+    };
+  }
+  return val;
+}, z.object({
+  key: z.string(),
+  label: z.string(),
+  question: z.string(),
+  required: z.boolean().default(false),
+}));
+
+export const UnderstandLlmOutputSchema = z.preprocess((val) => {
+  if (val && typeof val === 'object') {
+    const obj = { ...(val as Record<string, unknown>) };
+
+    // Normalize alias docTypeId -> detectedDocTypeId
+    if (!obj.detectedDocTypeId && obj.docTypeId && typeof obj.docTypeId === 'string') {
+      obj.detectedDocTypeId = obj.docTypeId;
+    }
+
+    // Normalize alias confidence -> docTypeConfidence
+    if (obj.docTypeConfidence === undefined && typeof obj.confidence === 'number') {
+      obj.docTypeConfidence = obj.confidence;
+    }
+
+    // Normalize alias facts -> extractedFacts
+    if (!obj.extractedFacts && Array.isArray(obj.facts)) {
+      obj.extractedFacts = (obj.facts as any[]).map((f) => {
+        if (typeof f === 'object' && f !== null) {
+          return {
+            key: f.key || f.field || 'fact',
+            label: f.label || f.field || 'Fact',
+            value: String(f.value || ''),
+            evidenceSnippet: String(f.evidenceSnippet || f.snippet || f.value || ''),
+            confidence: typeof f.confidence === 'number' ? f.confidence : 0.85,
+            status: ['extracted', 'corrected', 'confirmed', 'conflict'].includes(f.status)
+              ? f.status
+              : 'extracted',
+            previousValue: f.previousValue ? String(f.previousValue) : undefined,
+            conflictAlternatives: Array.isArray(f.conflictAlternatives)
+              ? f.conflictAlternatives
+              : undefined,
+          };
+        }
+        return f;
+      });
+    }
+
+    if (!Array.isArray(obj.extractedFacts)) {
+      obj.extractedFacts = [];
+    }
+
+    if (!Array.isArray(obj.missingFacts)) {
+      obj.missingFacts = [];
+    }
+
+    return obj;
+  }
+  return val;
+}, z.object({
   detectedDocTypeId: z.string().optional(),
   docTypeConfidence: z.number().min(0).max(1).optional(),
   customDef: z
@@ -24,33 +126,8 @@ export const UnderstandLlmOutputSchema = z.object({
       hasRecipient: z.boolean().default(false),
     })
     .optional(),
-  extractedFacts: z.array(
-    z.object({
-      key: z.string(),
-      label: z.string(),
-      value: z.string(),
-      evidenceSnippet: z.string(),
-      confidence: z.number(),
-      status: z.enum(['extracted', 'corrected', 'confirmed', 'conflict']),
-      previousValue: z.string().optional(),
-      conflictAlternatives: z
-        .array(
-          z.object({
-            value: z.string(),
-            evidenceSnippet: z.string(),
-          }),
-        )
-        .optional(),
-    }),
-  ),
-  missingFacts: z.array(
-    z.object({
-      key: z.string(),
-      label: z.string(),
-      question: z.string(),
-      required: z.boolean(),
-    }),
-  ),
+  extractedFacts: z.array(ExtractedFactItemSchema).default([]),
+  missingFacts: z.array(MissingFactItemSchema).default([]),
   recipientHint: z
     .object({
       raw: z.string(),
@@ -59,7 +136,7 @@ export const UnderstandLlmOutputSchema = z.object({
       location: z.string().optional(),
     })
     .optional(),
-});
+}));
 
 export type UnderstandLlmOutput = z.infer<typeof UnderstandLlmOutputSchema>;
 
@@ -93,7 +170,35 @@ RULES & CONSTRAINTS:
    - Pick the most appropriate ID from the catalog and assign a confidence (0.0 to 1.0).
 7. Custom Type Proposal (if docTypeId is 'custom'):
    - Analyze user customBrief and propose a CustomDef with a suitable layout, a skeleton composed ONLY of allowed block roles, and minimal requiredFacts.
-8. Output Format: Return ONLY a valid JSON object matching the schema. No markdown formatting.`;
+8. Output Format: Return ONLY a valid JSON object matching this schema:
+{
+  "detectedDocTypeId": "consumer_complaint",
+  "docTypeConfidence": 0.95,
+  "extractedFacts": [
+    {
+      "key": "product_name",
+      "label": "Product Name",
+      "value": "CoolAir AC",
+      "evidenceSnippet": "CoolAir AC",
+      "confidence": 0.95,
+      "status": "extracted"
+    }
+  ],
+  "missingFacts": [
+    {
+      "key": "complainant_name",
+      "label": "Complainant Name",
+      "question": "What is your full name?",
+      "required": true
+    }
+  ],
+  "recipientHint": {
+    "raw": "CoolAir Support",
+    "org": "CoolAir",
+    "dept": "Customer Service",
+    "location": ""
+  }
+}`;
 }
 
 export function buildUnderstandUserPrompt(params: {

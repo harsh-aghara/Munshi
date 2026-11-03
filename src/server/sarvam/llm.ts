@@ -33,7 +33,7 @@ export interface CallLlmOptions<T> {
   signal?: AbortSignal;
 }
 
-const DEFAULT_MODEL = 'sarvam-105b';
+const DEFAULT_MODEL = process.env.SARVAM_MODEL || 'sarvam-105b-conversations';
 
 /**
  * Extracts and parses JSON from text that might include markdown code fences (```json ... ```).
@@ -47,7 +47,7 @@ export function extractJsonFromText(raw: string): unknown {
 }
 
 /**
- * Calls Sarvam-105B LLM with schema validation and automatic 1-turn repair on schema failure.
+ * Calls Sarvam LLM with schema validation and automatic 1-turn repair on schema failure.
  */
 export async function callSarvamLlm<T = string>(
   options: CallLlmOptions<T>,
@@ -61,6 +61,9 @@ export async function callSarvamLlm<T = string>(
     signal,
   } = options;
 
+  const effectiveMaxTokens =
+    model === 'sarvam-105b' ? Math.max(maxTokens, 4096) : maxTokens;
+
   async function makeRequest(msgs: ChatMessage[]): Promise<string> {
     const res = await sarvamFetch<SarvamChatCompletionResponse>(
       '/v1/chat/completions',
@@ -73,14 +76,21 @@ export async function callSarvamLlm<T = string>(
           model,
           messages: msgs,
           temperature,
-          max_tokens: maxTokens,
+          max_tokens: effectiveMaxTokens,
         }),
       },
       { timeoutMs: 40_000, signal },
     );
 
-    const content = res.choices?.[0]?.message?.content;
-    if (content === undefined || content === null) {
+    const choice = res.choices?.[0];
+    const content = choice?.message?.content;
+    if (!content || !content.trim()) {
+      if (choice?.finish_reason === 'length') {
+        throw new AppError(
+          'LLM_INVALID_OUTPUT',
+          'Sarvam LLM exceeded token budget during reasoning.',
+        );
+      }
       throw new AppError(
         'LLM_INVALID_OUTPUT',
         'Sarvam LLM returned empty response choices.',
