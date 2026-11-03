@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useMunshiStore } from '@/store/useMunshiStore';
 import { MunshiApiClient } from '@/lib/api-client';
-import { VoiceRecorder } from '@/lib/audio';
+import { VoiceRecorder, globalAudioPlayer } from '@/lib/audio';
 import { exportToPdf } from '@/lib/pdf';
 import { getDocTypeById } from '@/config/doctypes';
 import { t } from '@/lib/i18n';
@@ -239,27 +239,28 @@ export const CommandBar: React.FC = () => {
 
   const playReadAloud = async () => {
     if (!draft) return;
+    globalAudioPlayer.stop();
     setIsPlayingTTS(true);
 
-    for (const block of draft.blocks) {
-      if (!block.text.trim()) continue;
-      setIsPlayingTTS(true, block.id);
-      try {
-        const audioChunks = await MunshiApiClient.textToSpeech(block.text, draft.lang);
-        for (const chunk of audioChunks) {
-          const audio = new Audio(`data:audio/wav;base64,${chunk}`);
-          await new Promise((resolve) => {
-            audio.onended = resolve;
-            audio.onerror = resolve;
-            audio.play().catch(resolve);
-          });
-        }
-      } catch (e) {
-        console.warn('TTS playback error for block', block.id, e);
-      }
-    }
+    try {
+      for (const block of draft.blocks) {
+        if (!block.text.trim()) continue;
+        if (!useMunshiStore.getState().isPlayingTTS) break;
 
-    setIsPlayingTTS(false, null);
+        setIsPlayingTTS(true, block.id);
+        const audioChunks = await MunshiApiClient.textToSpeech(block.text, draft.lang);
+
+        if (!useMunshiStore.getState().isPlayingTTS) break;
+
+        const finished = await globalAudioPlayer.playBase64Chunks(audioChunks);
+        if (!finished || !useMunshiStore.getState().isPlayingTTS) break;
+      }
+    } catch (e) {
+      console.warn('TTS playback error for block', e);
+    } finally {
+      globalAudioPlayer.stop();
+      setIsPlayingTTS(false, null);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {

@@ -181,3 +181,53 @@ export class VoiceRecorder {
     }
   }
 }
+
+/**
+ * Controller for managing TTS audio playback with instant cancel/stop support.
+ */
+export class AudioPlayer {
+  private currentAudio: HTMLAudioElement | null = null;
+  private isStopped: boolean = false;
+
+  public async playBase64Chunks(chunks: string[]): Promise<boolean> {
+    this.stop();
+    this.isStopped = false;
+
+    for (const chunk of chunks) {
+      if (this.isStopped) return false;
+
+      const audio = new Audio(`data:audio/wav;base64,${chunk}`);
+      this.currentAudio = audio;
+
+      const finished = await new Promise<boolean>((resolve) => {
+        audio.onended = () => resolve(true);
+        audio.onerror = () => resolve(false);
+        audio.play().catch(() => resolve(false));
+      });
+
+      this.currentAudio = null;
+      if (!finished || this.isStopped) return false;
+    }
+
+    return !this.isStopped;
+  }
+
+  public stop(): void {
+    this.isStopped = true;
+    if (this.currentAudio) {
+      try {
+        this.currentAudio.pause();
+        this.currentAudio.currentTime = 0;
+        this.currentAudio.src = '';
+      } catch {}
+      this.currentAudio = null;
+    }
+  }
+
+  public isPlaying(): boolean {
+    return !this.isStopped && this.currentAudio !== null;
+  }
+}
+
+export const globalAudioPlayer = new AudioPlayer();
+

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useMunshiStore } from '@/store/useMunshiStore';
 import { MunshiApiClient } from '@/lib/api-client';
-import { VoiceRecorder } from '@/lib/audio';
+import { VoiceRecorder, globalAudioPlayer } from '@/lib/audio';
 import { t } from '@/lib/i18n';
 import {
   HelpCircle,
@@ -25,6 +25,12 @@ export const FollowUpCard: React.FC = () => {
 
   const recorderRef = React.useRef<VoiceRecorder | null>(null);
 
+  React.useEffect(() => {
+    return () => {
+      globalAudioPlayer.stop();
+    };
+  }, []);
+
   if (!caseState || !caseState.missing || caseState.missing.length === 0) {
     return null;
   }
@@ -34,22 +40,24 @@ export const FollowUpCard: React.FC = () => {
 
   // Play spoken question using Bulbul via POST /api/tts (PRD FE-10, BE-16)
   const handlePlayQuestion = async (mf: MissingFact) => {
+    if (isPlayingAudio === mf.key) {
+      globalAudioPlayer.stop();
+      setIsPlayingAudio(null);
+      return;
+    }
+
     try {
+      globalAudioPlayer.stop();
       setIsPlayingAudio(mf.key);
-      const dictationLang = prefs.dictationLang === 'auto' ? 'hi-IN' : prefs.dictationLang;
+      const dictationLang = prefs.dictationLang === 'auto'
+        ? (caseState?.inputLang || 'hi-IN')
+        : prefs.dictationLang;
       const audioChunks = await MunshiApiClient.textToSpeech(mf.question, dictationLang);
 
-      for (const chunk of audioChunks) {
-        const audio = new Audio(`data:audio/wav;base64,${chunk}`);
-        await new Promise((resolve) => {
-          audio.onended = resolve;
-          audio.onerror = resolve;
-          audio.play().catch(resolve);
-        });
-      }
-      setIsPlayingAudio(null);
+      await globalAudioPlayer.playBase64Chunks(audioChunks);
     } catch (err) {
       console.warn('TTS playback failed', err);
+    } finally {
       setIsPlayingAudio(null);
     }
   };
@@ -149,15 +157,22 @@ export const FollowUpCard: React.FC = () => {
                   <span className="text-slate-700">{mf.question}</span>
                 </div>
 
-                {/* Bulbul TTS button */}
+                {/* Bulbul TTS button (click to play or click to stop) */}
                 <button
                   type="button"
                   onClick={() => handlePlayQuestion(mf)}
-                  disabled={isPlayingThis}
-                  className="rounded-lg p-1.5 text-munshi-700 hover:bg-munshi-50 transition-colors shrink-0"
-                  title="Listen to question (Bulbul TTS)"
+                  className={`rounded-lg p-1.5 transition-colors shrink-0 ${
+                    isPlayingThis
+                      ? 'bg-amber-100 text-amber-800'
+                      : 'text-munshi-700 hover:bg-munshi-50'
+                  }`}
+                  title={isPlayingThis ? 'Stop read aloud' : 'Listen to question (Bulbul TTS)'}
                 >
-                  <Volume2 className={`h-4 w-4 ${isPlayingThis ? 'animate-pulse text-munshi-600' : ''}`} />
+                  {isPlayingThis ? (
+                    <Square className="h-4 w-4 fill-current text-amber-800 animate-pulse" />
+                  ) : (
+                    <Volume2 className="h-4 w-4 text-munshi-600" />
+                  )}
                 </button>
               </div>
 

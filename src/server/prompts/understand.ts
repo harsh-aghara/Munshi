@@ -2,6 +2,7 @@
  * Prompt builders for understanding, classification, and fact extraction (BE-9, BE-11).
  */
 import { docTypes } from '@/config/doctypes';
+import { getLanguage } from '@/config/languages';
 import { BlockRoleSchema, type CustomDef } from '@/contracts';
 import { z } from 'zod';
 
@@ -162,10 +163,11 @@ RULES & CONSTRAINTS:
 2. Self-Correction: When the user corrects themselves (e.g., "no wait, not 12th, make it 15th"), the LATER statement wins. Set status="corrected" and record previousValue.
 3. Conflict: When speech and document disagree on a value (e.g. document says ₹1,200 but speech says ₹1,500), mark status="conflict" and populate conflictAlternatives with both options and their respective evidence snippets.
 4. Verbatim Evidence: For every extracted fact, evidenceSnippet must be a verbatim excerpt from the source text.
-5. Missing Facts:
+5. Missing Facts & Follow-up Questions:
    - For official/complaint types: ask for missing required facts.
    - For creative types: do NOT ask questions unless input is completely empty or meaningless.
    - Limit: Suggest at most 2 missing facts per round.
+   - CRITICAL LANGUAGE RULE: The "question" and "label" in each missingFact MUST be written in the user's spoken/dictation language (e.g. if the user speaks Hindi, write the question in natural Hindi like "कृपया अपना पूरा नाम बताएं"; if Gujarati, in natural Gujarati; if Tamil, in Tamil; if English, in English). NEVER output English questions when the user speaks an Indian language!
 6. Type Classification (if docTypeId is 'auto'):
    - Pick the most appropriate ID from the catalog and assign a confidence (0.0 to 1.0).
 7. Custom Type Proposal (if docTypeId is 'custom'):
@@ -206,14 +208,21 @@ export function buildUnderstandUserPrompt(params: {
   customBrief?: string;
   segments: Array<{ id: string; text: string; lang: string }>;
   docs: Array<{ id: string; name: string; markdown: string }>;
+  inputLang: string;
   answers?: Record<string, string>;
   previousFacts?: unknown[];
 }): string {
-  const { docTypeId, customBrief, segments, docs, answers, previousFacts } = params;
+  const { docTypeId, customBrief, segments, docs, inputLang, answers, previousFacts } = params;
 
   const parts: string[] = [];
 
   parts.push(`Target Writing Type ID: "${docTypeId}"`);
+
+  const langDef = getLanguage(inputLang);
+  const langLabel = langDef ? `${langDef.label} (${langDef.nativeLabel})` : inputLang;
+  parts.push(
+    `User Spoken / Dictation Language: "${inputLang}" (${langLabel}).\nCRITICAL REQUIREMENT: Formulate all missing facts "question" and "label" in ${langLabel} so the user is asked questions in the exact language they speak!`
+  );
 
   if (customBrief) {
     parts.push(`User Custom Brief:\n<custom_brief>\n${customBrief}\n</custom_brief>`);

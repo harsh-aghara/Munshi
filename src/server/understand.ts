@@ -17,6 +17,7 @@ import {
 } from '@/contracts';
 import { getDocType } from '@/config/doctypes';
 import { verifyEvidenceSnippet } from './extract';
+import { translateText } from './sarvam/translate';
 
 export async function processUnderstand(
   request: UnderstandRequest,
@@ -48,6 +49,7 @@ export async function processUnderstand(
     customBrief,
     segments,
     docs,
+    inputLang,
     answers,
     previousFacts: previousCase?.facts,
   });
@@ -160,6 +162,21 @@ export async function processUnderstand(
     if (docDef && docDef.grounding !== 'creative') {
       const candidateMissing = llmResult.missingFacts.slice(0, 2);
       missing.push(...candidateMissing);
+
+      // Safety net: Guarantee follow-up questions are in the user's spoken language
+      if (inputLang !== 'en-IN' && missing.length > 0) {
+        for (const mf of missing) {
+          // If the question is predominantly ASCII English, translate it to inputLang
+          const isAsciiEnglish = /^[\x00-\x7F\s.,?!'"\-]+$/.test(mf.question.trim());
+          if (isAsciiEnglish) {
+            try {
+              mf.question = await translateText(mf.question, 'en-IN', inputLang);
+            } catch (e) {
+              console.warn('Failed to translate follow-up question to inputLang', e);
+            }
+          }
+        }
+      }
     }
   }
 

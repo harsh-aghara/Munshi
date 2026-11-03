@@ -11,6 +11,7 @@ import { CommandBar } from './CommandBar';
 import { DiffViewer } from './DiffViewer';
 import { exportToPdf } from '@/lib/pdf';
 import { MunshiApiClient } from '@/lib/api-client';
+import { globalAudioPlayer } from '@/lib/audio';
 import { t } from '@/lib/i18n';
 import {
   FileText,
@@ -72,40 +73,49 @@ export const DocumentPanel: React.FC = () => {
   };
 
   // PDF Export
+  React.useEffect(() => {
+    return () => {
+      globalAudioPlayer.stop();
+    };
+  }, []);
+
   const handleExportPdf = () => {
     if (!draft) return;
     exportToPdf(draft.layout, draft.lang);
   };
 
-  // Read-Aloud (Bulbul TTS sequential playback)
+  // Read-Aloud (Bulbul TTS sequential playback with instant stop support)
   const handleToggleReadAloud = async () => {
     if (isPlayingTTS) {
+      globalAudioPlayer.stop();
       setIsPlayingTTS(false, null);
       return;
     }
 
     if (!draft || draft.blocks.length === 0) return;
 
+    globalAudioPlayer.stop();
     setIsPlayingTTS(true);
-    for (const block of draft.blocks) {
-      if (!block.text.trim()) continue;
-      setIsPlayingTTS(true, block.id);
 
-      try {
+    try {
+      for (const block of draft.blocks) {
+        if (!block.text.trim()) continue;
+        if (!useMunshiStore.getState().isPlayingTTS) break;
+
+        setIsPlayingTTS(true, block.id);
         const audioChunks = await MunshiApiClient.textToSpeech(block.text, draft.lang);
-        for (const chunk of audioChunks) {
-          const audio = new Audio(`data:audio/wav;base64,${chunk}`);
-          await new Promise((resolve) => {
-            audio.onended = resolve;
-            audio.onerror = resolve;
-            audio.play().catch(resolve);
-          });
-        }
-      } catch (e) {
-        console.warn('TTS playback error', e);
+
+        if (!useMunshiStore.getState().isPlayingTTS) break;
+
+        const finished = await globalAudioPlayer.playBase64Chunks(audioChunks);
+        if (!finished || !useMunshiStore.getState().isPlayingTTS) break;
       }
+    } catch (e) {
+      console.warn('TTS playback error', e);
+    } finally {
+      globalAudioPlayer.stop();
+      setIsPlayingTTS(false, null);
     }
-    setIsPlayingTTS(false, null);
   };
 
   // Quick tone change from Tone Chip (PRD FE-24)
