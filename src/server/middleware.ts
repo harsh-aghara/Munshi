@@ -54,14 +54,12 @@ export function apiHandler<T>(options: {
     const route = new URL(req.url).pathname;
 
     try {
-      // 1. Access code check
-      const accessCode = process.env.ACCESS_CODE;
-      if (!accessCode) {
-        throw new AppError('INTERNAL', 'Server misconfigured: ACCESS_CODE not set.');
-      }
-      const provided = req.headers.get('x-access-code') || '';
-      if (!constantTimeCompare(provided, accessCode)) {
-        throw new AppError('ACCESS_DENIED', 'Invalid or missing access code.');
+      // 1. Access code check (Disabled by default to allow open access for all users)
+      if (process.env.REQUIRE_ACCESS_CODE === 'true' && process.env.ACCESS_CODE) {
+        const provided = req.headers.get('x-access-code') || '';
+        if (!constantTimeCompare(provided, process.env.ACCESS_CODE)) {
+          throw new AppError('ACCESS_DENIED', 'Invalid or missing access code.');
+        }
       }
 
       // 2. Rate limit

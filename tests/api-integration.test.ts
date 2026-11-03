@@ -46,9 +46,9 @@ test('GET /api/health succeeds without access code', async () => {
   assert.equal(data.service, 'munshi-backend');
 });
 
-// ── 2. Access Code & Middleware Protection ───────────────────────────────────
+// ── 2. Open Access & Middleware Protection ───────────────────────────────────
 
-test('Protected routes reject requests with missing access code (403 ACCESS_DENIED)', async () => {
+test('Routes allow open access without requiring an access code', async () => {
   const req = createRequest('http://localhost:3000/api/understand', 'POST', {
     docTypeId: 'grievance',
     segments: [],
@@ -57,25 +57,27 @@ test('Protected routes reject requests with missing access code (403 ACCESS_DENI
   });
 
   const res = await understandPost(req);
-  assert.equal(res.status, 403);
-  const data = await res.json();
-  assert.equal(data.code, 'ACCESS_DENIED');
-  assert.equal(data.retryable, false);
-  assert.ok(data.requestId);
+  // Status should not be 403 ACCESS_DENIED because access code requirement is removed
+  assert.notEqual(res.status, 403);
 });
 
-test('Protected routes reject requests with wrong access code', async () => {
-  const req = createRequest(
-    'http://localhost:3000/api/command',
-    'POST',
-    { text: 'make it firmer', draft: {}, case: {} },
-    { 'x-access-code': 'wrong-code-here' },
-  );
+test('Protected routes reject requests when REQUIRE_ACCESS_CODE is explicitly enabled', async () => {
+  process.env.REQUIRE_ACCESS_CODE = 'true';
+  try {
+    const req = createRequest(
+      'http://localhost:3000/api/command',
+      'POST',
+      { text: 'make it firmer', draft: {}, case: {} },
+      { 'x-access-code': 'wrong-code-here' },
+    );
 
-  const res = await commandPost(req);
-  assert.equal(res.status, 403);
-  const data = await res.json();
-  assert.equal(data.code, 'ACCESS_DENIED');
+    const res = await commandPost(req);
+    assert.equal(res.status, 403);
+    const data = await res.json();
+    assert.equal(data.code, 'ACCESS_DENIED');
+  } finally {
+    delete process.env.REQUIRE_ACCESS_CODE;
+  }
 });
 
 test('Protected routes propagate x-request-id in error envelopes', async () => {
