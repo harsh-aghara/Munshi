@@ -19,18 +19,18 @@
 
 </div>
 
-## 🎬 Demo & Screenshots
+## Demo & Screenshots
 
-### 📹 Full YouTube Walkthrough
+### Full YouTube Walkthrough
 Click the video below to watch **Munshi** transcribe Hindi speech, parse proof documents, and draft a formal complaint in English in real time:
 
 [![Munshi Demo Video](https://img.youtube.com/vi/PKKM2zqMgCw/maxresdefault.jpg)](https://youtu.be/PKKM2zqMgCw)
 
-> 📺 **Direct YouTube Link**: [https://youtu.be/PKKM2zqMgCw](https://youtu.be/PKKM2zqMgCw)
+>  **Direct YouTube Link**: [https://youtu.be/PKKM2zqMgCw](https://youtu.be/PKKM2zqMgCw)
 
 ---
 
-### 📸 Application Walkthrough
+### Application Walkthrough
 
 <div align="center">
 
@@ -67,47 +67,47 @@ Built atop the **Sarvam AI** foundation model ecosystem, Munshi is designed from
 
 ## ✨ Key Features
 
-### 🎙️ 1. Multilingual Audio Dictation & Transcription
+### 1. Multilingual Audio Dictation & Transcription
 - Powered by **Sarvam Saaras v3** with full auto-detection and support for 11+ Indic languages (Hindi, Bengali, Gujarati, Kannada, Malayalam, Marathi, Odia, Punjabi, Tamil, Telugu, and Indian English).
 - Live recording timer, audio-chunking for extended recordings via Sarvam batch endpoints, and automated filtering of empty micro-clicks.
 
-### 📄 2. Vision & Document AI OCR
+### 2. Vision & Document AI OCR
 - Powered by **Sarvam Vision** with server-side magic-byte validation (`PDF`, `PNG`, `JPEG`) ensuring robust security against MIME spoofing.
 - Multi-page document handling (up to 10 pages) with background job state polling and extraction of account numbers, billing periods, disputed sums, and reference numbers.
 
-### 🧠 3. Interactive Understanding Engine
+### 3. Interactive Understanding Engine
 - Powered by **Sarvam-105B**: identifies user intent, suggests appropriate document types, extracts domain-specific entities, and generates intelligent follow-up questions tailored to the speaker's language.
 - Non-intrusive: only asks for what is strictly missing according to the document schema, remaining silent for creative pieces.
 
-### 📑 4. Four Bespoke Document Layouts
+### 4. Four Bespoke Document Layouts
 - **Letter Layout**: Classical bureaucratic and legal hierarchy with sender, recipient, date, reference, subject line, body paragraphs, and mandatory legal disclaimers.
 - **Email Layout**: Clean subject line, salutation, body paragraphs, and professional sign-off.
 - **Prose Layout**: Formatted title, section headings, and academic or narrative prose.
 - **Verse Layout**: Indented stanzas with rhythm preservation for poetry (Free verse, Haiku, Sonnet, Ghazal).
 
-### 💬 5. Natural Voice, Text & In-Place Editing
+### 5. Natural Voice, Text & In-Place Editing
 - **Direct In-Place Editing**: Click any paragraph, salutation, or subject block directly in the right-hand preview panel to edit immediately like a native text editor, with full multilingual script and keyboard support.
 - **Conversational Commands**: Command bar accepts spoken or typed commands (e.g., *"Make paragraph 2 more assertive"*, *"Translate into Telugu"*, *"Change tone to polite"*, *"Read aloud"*).
 - **Visual Diff Viewer**: Highlights line and word-level modifications before applying.
 - **State History**: Full multi-level **Undo / Redo** history store.
 
-### 🔍 6. Verified Recipient Discovery & SSRF Defense
+### 6. Verified Recipient Discovery & SSRF Defense
 - Natural query resolution for authority contacts (e.g., *"Find the nodal grievance officer for Bescom Bangalore"*).
 - Query formulation, multi-provider search adapter (**Tavily**, **Serper**, or **Brave Search**), domain trust score ranking, and DNS MX record validation.
 - Comprehensive SSRF defense: blocks private IP ranges (RFC 1918), loopback, link-local, and cloud metadata endpoints (`169.254.169.254`).
 
-### 🔊 7. Read-Aloud Text-to-Speech (TTS)
+### 7. Read-Aloud Text-to-Speech (TTS)
 - Powered by **Sarvam Bulbul v3** high-fidelity neural voices (`ritu`, `kavitha`, etc.).
 - Audio chunking at sentence boundaries, immediate playback cancellation, and speaker language alignment.
 
-### 📤 8. Instant Export & Delivery
+### 8. Instant Export & Delivery
 - **Direct Mailto**: Generates standard `mailto:` links with automatic character-limit detection; safely falls back to system clipboard copy when UTF-8 Indic characters exceed browser URI limits.
 - **Gmail Web**: Deep-links directly to Gmail compose with pre-filled subject, recipient, and formatted body.
 - **Print & PDF**: Tailored print CSS stylesheets formatted for standard A4 pages with zero UI clutter.
 
 ---
 
-## 🏛️ Architecture & Data Flow
+## Architecture & Data Flow
 
 ```mermaid
 flowchart TD
@@ -364,7 +364,7 @@ npm start
 
 ---
 
-## 👥 Contributors
+## Contributors
 
 Developed with ❤️ during the **Sarvam AI Campus Hackathon**.
 - **Backend & AI Architecture**: Backend Engineering Team
