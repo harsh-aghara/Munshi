@@ -173,3 +173,7 @@ export function isToneAllowedForType(
   }
   return allowedTones.includes(toneId);
 }
+
+export const TONES = tones;
+export const getToneById = getTone;
+

@@ -45,3 +45,4 @@ declare module 'node:dns/promises' {
     options: { all: boolean },
   ): Promise<LookupAddress[]>;
 }
+

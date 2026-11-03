@@ -214,3 +214,19 @@ export function isTranslateSupported(code: string): boolean {
 export function isLlmSupported(code: string): boolean {
   return Boolean(languageMap[code]?.llm);
 }
+
+export const LANGUAGES = languages;
+export const getLanguageByCode = getLanguage;
+export function getDictationLanguages(): LanguageDef[] {
+  return languages.filter((l) => l.stt);
+}
+export function getDocumentLanguages(): LanguageDef[] {
+  return languages.filter((l) => l.llm);
+}
+export function getTranslationLanguages(): LanguageDef[] {
+  return languages.filter((l) => l.translate);
+}
+export function getTTSLanguages(): LanguageDef[] {
+  return languages.filter((l) => l.tts);
+}
+

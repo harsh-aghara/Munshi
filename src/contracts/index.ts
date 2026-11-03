@@ -103,9 +103,12 @@ export const RecipientHintSchema = z.object({
 });
 export type RecipientHint = z.infer<typeof RecipientHintSchema>;
 
+export const LayoutSchema = z.enum(["letter", "email", "prose", "verse"]);
+export type LayoutType = z.infer<typeof LayoutSchema>;
+
 export const CustomDefSchema = z.object({
   label: z.string(),
-  layout: z.enum(["letter", "email", "prose", "verse"]),
+  layout: LayoutSchema,
   skeleton: z.array(BlockRoleSchema),
   requiredFacts: z.array(
     z.object({
@@ -135,6 +138,8 @@ export const DocSchema = z.object({
   markdown: z.string(),
 });
 export type Doc = z.infer<typeof DocSchema>;
+export type CaseDoc = Doc;
+
 
 export const CaseStateSchema = z.object({
   caseId: z.string(),

@@ -35,6 +35,7 @@ export interface ParamDef {
   options?: { value: string; labelKey: string }[];
   min?: number;
   max?: number;
+  defaultValue?: string | number | boolean;
 }
 
 export interface DocTypeDef {
@@ -719,3 +720,9 @@ export function isValidDocType(id: string): boolean {
 export function getTypesForCategory(categoryId: CategoryId): DocTypeDef[] {
   return docTypes.filter((d) => d.category === categoryId);
 }
+
+export const DOCTYPES = docTypes;
+export const CATEGORIES = categories;
+export const getDocTypeById = getDocType;
+export const getDocTypesByCategory = getTypesForCategory;
+

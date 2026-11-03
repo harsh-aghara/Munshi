@@ -5,9 +5,6 @@ const nextConfig = {
     // Avoid blocking build on internal .next/types generation mismatches
     ignoreBuildErrors: true,
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
 };
 
 export default nextConfig;
