@@ -2,6 +2,7 @@
  * Drafting engine and streaming generator (BE-12, BE-13).
  */
 import { callSarvamLlm } from './sarvam/llm';
+import { translateText, checkScriptMismatch } from './sarvam/translate';
 import {
   buildDraftPrompt,
   DraftLlmOutputSchema,
@@ -85,10 +86,24 @@ export async function generateDraft(request: DraftRequest): Promise<{
       }
     }
 
+    let blockText = rawBlock.text;
+    const scriptMismatch = checkScriptMismatch(blockText, letterLang);
+    if (scriptMismatch.hasMismatch) {
+      try {
+        blockText = await translateText(
+          blockText,
+          scriptMismatch.detectedLang || 'auto',
+          letterLang,
+        );
+      } catch (err) {
+        console.warn(`Auto-translation for block ${i + 1} script mismatch failed`, err);
+      }
+    }
+
     const candidateBlock: DraftBlock = {
       id: blockId,
       role: rawBlock.role,
-      text: rawBlock.text,
+      text: blockText,
       evidenceIds,
       grounding: 'verified',
     };

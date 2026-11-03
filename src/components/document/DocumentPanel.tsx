@@ -12,6 +12,7 @@ import { DiffViewer } from './DiffViewer';
 import { exportToPdf } from '@/lib/pdf';
 import { MunshiApiClient } from '@/lib/api-client';
 import { globalAudioPlayer } from '@/lib/audio';
+import { getDocumentLanguages } from '@/config/languages';
 import { t } from '@/lib/i18n';
 import {
   FileText,
@@ -28,6 +29,7 @@ import {
   Eye,
   GitCompare,
   Sparkles,
+  ChevronDown,
 } from 'lucide-react';
 
 export const DocumentPanel: React.FC = () => {
@@ -53,6 +55,7 @@ export const DocumentPanel: React.FC = () => {
   const [showDiff, setShowDiff] = useState(false);
   const [translatedDraft, setTranslatedDraft] = useState<typeof draft | null>(null);
   const [showTranslatedSideBySide, setShowTranslatedSideBySide] = useState(false);
+  const [langDropdownOpen, setLangDropdownOpen] = useState(false);
 
   const activeDocTypeId = draft?.docType || caseState?.docType || prefs.lastDocType || 'grievance';
   const docTypeDef = getDocTypeById(activeDocTypeId);
@@ -196,16 +199,47 @@ export const DocumentPanel: React.FC = () => {
                 </span>
               </div>
 
-              {/* Document Language Chip */}
-              <button
-                type="button"
-                onClick={() => setShowLangChangeDialog({ targetLang: draft.lang })}
-                className="flex items-center gap-1 rounded-xl bg-slate-100 hover:bg-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 transition-colors"
-                title="Change document language"
-              >
-                <Languages className="h-3 w-3 text-slate-500" />
-                <span className="uppercase font-mono text-[11px]">{draft.lang}</span>
-              </button>
+              {/* Document Language Chip with dropdown */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setLangDropdownOpen(!langDropdownOpen)}
+                  className="flex items-center gap-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 transition-colors"
+                  title="Change document language"
+                >
+                  <Languages className="h-3 w-3 text-slate-500" />
+                  <span className="uppercase font-mono text-[11px]">{draft.lang}</span>
+                  <ChevronDown className="h-3 w-3 text-slate-400" />
+                </button>
+
+                {langDropdownOpen && (
+                  <div className="absolute left-0 mt-2 w-56 max-h-72 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-xl z-50">
+                    <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      Switch Document Language
+                    </div>
+                    <div className="space-y-0.5 mt-1">
+                      {getDocumentLanguages().map((lang) => (
+                        <button
+                          key={lang.code}
+                          type="button"
+                          onClick={() => {
+                            setLangDropdownOpen(false);
+                            setShowLangChangeDialog({ targetLang: lang.code as any });
+                          }}
+                          className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-xs ${
+                            draft.lang === lang.code
+                              ? 'bg-munshi-50 font-medium text-munshi-900'
+                              : 'hover:bg-slate-50 text-slate-700'
+                          }`}
+                        >
+                          <span>{lang.label}</span>
+                          <span className="text-[10px] text-slate-400">{lang.script}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Version & Undo / Redo (PRD FE-15) */}
               <div className="flex items-center gap-1 border-l border-slate-200 pl-2">

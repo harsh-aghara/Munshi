@@ -12,6 +12,11 @@ import {
 } from '../src/server/extract.ts';
 
 import {
+  detectScriptLanguage,
+  checkScriptMismatch,
+} from '../src/server/sarvam/translate.ts';
+
+import {
   verifyBlockGrounding,
   ensureDisclaimerBlock,
   DISCLAIMER_TEXT,
@@ -378,6 +383,39 @@ test('Zod contracts validate core domain structures', () => {
     requestId: 'req_123',
   });
   assert.equal(validErr.success, true);
+});
+
+// ── 7. Script Detection and Language Safeguards ──────────────────────────────
+
+test('detectScriptLanguage accurately recognizes Indic and Latin scripts', () => {
+  assert.equal(detectScriptLanguage('ગ્રેડિંગ અંગેની ફરિયાદ'), 'gu-IN');
+  assert.equal(detectScriptLanguage('यह एक औपचारिक पत्र है'), 'hi-IN');
+  assert.equal(detectScriptLanguage('This is a formal letter'), 'en-IN');
+  assert.equal(detectScriptLanguage('12345 67890'), null);
+});
+
+test('checkScriptMismatch flags language mismatch between expected and actual text', () => {
+  // Gujarati text when English (en-IN) is expected -> Mismatch flagged!
+  const gujaratiInEnglish = checkScriptMismatch(
+    'હું આ પત્ર દ્વારા આપનું ધ્યાન મારા સેમેસ્ટર 4 ના પરિણામ તરફ દોરવા માંગુ છું.',
+    'en-IN',
+  );
+  assert.equal(gujaratiInEnglish.hasMismatch, true);
+  assert.equal(gujaratiInEnglish.detectedLang, 'gu-IN');
+
+  // English text when English is expected -> No mismatch
+  const englishInEnglish = checkScriptMismatch(
+    'I am writing to bring your attention to my semester results.',
+    'en-IN',
+  );
+  assert.equal(englishInEnglish.hasMismatch, false);
+
+  // Gujarati text when Gujarati is expected -> No mismatch
+  const gujaratiInGujarati = checkScriptMismatch(
+    'ગ્રેડિંગ અંગેની ફરિયાદ',
+    'gu-IN',
+  );
+  assert.equal(gujaratiInGujarati.hasMismatch, false);
 });
 
 // ── 8. Voice Timer & STT Uncapped Duration ───────────────────────────────────
